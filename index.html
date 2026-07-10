@@ -213,18 +213,55 @@ function icon(color){
 }
 const ICONS = Object.fromEntries(Object.entries(PRI).map(([k,v])=>[k, icon(v.color)]));
 
+// rótulo de cidade p/ montar a busca (Maps abre o LOCAL pelo nome, não a coordenada)
+const CITY = {londres:'Londres', paris:'Paris', barcelona:'Barcelona', madri:'Madrid', porto:'Porto', lisboa:'Lisboa'};
+function term(nome, cid){
+  const n = nome.split(' (')[0].split(' — ')[0].split(' / ')[0].trim();
+  return n + ', ' + (CITY[cid]||'');
+}
+// foto do local via Wikipedia (sem API key; CORS liberado). Cache por termo.
+const photoCache = new Map();
+async function wikiThumb(q){
+  if(photoCache.has(q)) return photoCache.get(q);
+  for(const lang of ['pt','en']){
+    try{
+      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search`
+        + `&gsrsearch=${encodeURIComponent(q)}&gsrlimit=1&prop=pageimages&piprop=thumbnail`
+        + `&pithumbsize=320&format=json&origin=*`;
+      const j = await (await fetch(u)).json();
+      const pages = j && j.query && j.query.pages;
+      if(pages){ const p = Object.values(pages)[0];
+        if(p && p.thumbnail && p.thumbnail.source){ photoCache.set(q, p.thumbnail.source); return p.thumbnail.source; } }
+    }catch(e){}
+  }
+  photoCache.set(q, null); return null;
+}
 // cria todos os markers uma vez
 const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const s = SRC[cid]||{};
-  const gmaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const q = term(nome, cid);
+  const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
-    + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
+    + `<img class="pop-photo" alt="" style="display:none;width:230px;max-width:100%;height:130px;`
+    + `object-fit:cover;border-radius:7px;margin:7px 0;background:#eee"/>`
+    + `<a href="${gmaps}" target="_blank">📍 Abrir o local no Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
   if(nota)   html += `<div class="note">${nota}</div>`;
   const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html)
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
+  m._q = q;
   return {m,pri};
+});
+// ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
+map.on('popupopen', async (e)=>{
+  const node = e.popup._contentNode, m = e.popup._source;
+  if(!node || !m) return;
+  const img = node.querySelector('.pop-photo');
+  if(!img || img.dataset.done) return;
+  img.dataset.done = '1';
+  const src = await wikiThumb(m._q);
+  if(src){ img.onload = ()=>{ img.style.display='block'; if(e.popup._updateLayout) e.popup.update(); }; img.src = src; }
 });
 
 function activePris(){
@@ -250,7 +287,7 @@ const lg=L.control({position:'bottomright'});
 lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');
   d.innerHTML='<span class="dot r"></span>🔴 obrigatório<br><span class="dot o"></span>🟠 quase certo<br>'
     +'<span class="dot y"></span>🟡 opcional<br><span class="dot w"></span>⚪ sem interesse<br>'
-    +'<small>filtro no topo · popup: Maps · blog · vídeo</small>';return d;};
+    +'<small>filtro no topo · popup: foto + Maps + blog + vídeo</small>';return d;};
 lg.addTo(map);
 
 // estado inicial: só 🔴 + 🟠 marcados (como no HTML)
