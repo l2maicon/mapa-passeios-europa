@@ -350,12 +350,12 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const q = term(nome, cid);
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
-    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:500px;height:300px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
+    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:700px;height:420px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
     + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
   if(nota)   html += `<div class="note">${nota}</div>`;
-  const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html,{maxWidth:540,minWidth:300})
+  const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html,{maxWidth:756,minWidth:420})
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
   m._q = q;
   return {m,pri};
