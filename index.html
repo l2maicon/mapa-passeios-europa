@@ -222,7 +222,7 @@ const PHOTO = {
   'Tower Bridge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Tower_bridge_London_Twilight_-_November_2006.jpg/500px-Tower_bridge_London_Twilight_-_November_2006.jpg',
   'Westminster Abbey': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Palace_of_Westminster_London_2023_01.jpg/500px-Palace_of_Westminster_London_2023_01.jpg',
   'St Paul\'s Cathedral': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Cath%C3%A9drale_St-Paul_-_entr%C3%A9e_principale.jpg/500px-Cath%C3%A9drale_St-Paul_-_entr%C3%A9e_principale.jpg',
-  'Sky Garden (mirante)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/AbubakarSalim.jpg/500px-AbubakarSalim.jpg',
+  'Sky Garden (mirante)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Walkie-Talkie_-_Sept_2015_%28cropped%29.jpg/500px-Walkie-Talkie_-_Sept_2015_%28cropped%29.jpg',
   'Covent Garden': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/%E6%9F%AF%E8%8A%AC%E5%9C%92_%2840400019900%29.jpg/500px-%E6%9F%AF%E8%8A%AC%E5%9C%92_%2840400019900%29.jpg',
   'Soho': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Golden_Square%2C_Soho%2C_London_-_September_2006.jpg/500px-Golden_Square%2C_Soho%2C_London_-_September_2006.jpg',
   'Notting Hill / Portobello': 'https://upload.wikimedia.org/wikipedia/pt/d/dc/Notting_Hill.jpg',
@@ -348,12 +348,12 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const q = term(nome, cid);
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
-    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:250px;height:150px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
+    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:500px;height:300px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
     + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
   if(nota)   html += `<div class="note">${nota}</div>`;
-  const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html)
+  const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html,{maxWidth:540,minWidth:300})
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
   m._q = q;
   return {m,pri};
