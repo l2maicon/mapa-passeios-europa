@@ -213,28 +213,134 @@ function icon(color){
 }
 const ICONS = Object.fromEntries(Object.entries(PRI).map(([k,v])=>[k, icon(v.color)]));
 
+const PHOTO = {
+  'Harry Potter Studio (Warner)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Harry_Potter_wordmark_%28British%29.svg/500px-Harry_Potter_wordmark_%28British%29.svg.png',
+  'Buckingham + Troca da Guarda': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Buckingham_Palace_-_01.jpg/500px-Buckingham_Palace_-_01.jpg',
+  'British Museum': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/John_Edward_Gray._Photograph._Wellcome_V0027572_%28cropped%29.jpg/500px-John_Edward_Gray._Photograph._Wellcome_V0027572_%28cropped%29.jpg',
+  'Natural History Museum': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Natural_History_Museum_London_Jan_2006.jpg/500px-Natural_History_Museum_London_Jan_2006.jpg',
+  'Torre de Londres': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Tower_of_London_viewed_from_the_River_Thames.jpg/500px-Tower_of_London_viewed_from_the_River_Thames.jpg',
+  'Tower Bridge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Tower_bridge_London_Twilight_-_November_2006.jpg/500px-Tower_bridge_London_Twilight_-_November_2006.jpg',
+  'Westminster Abbey': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Palace_of_Westminster_London_2023_01.jpg/500px-Palace_of_Westminster_London_2023_01.jpg',
+  'St Paul\'s Cathedral': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Cath%C3%A9drale_St-Paul_-_entr%C3%A9e_principale.jpg/500px-Cath%C3%A9drale_St-Paul_-_entr%C3%A9e_principale.jpg',
+  'Sky Garden (mirante)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/AbubakarSalim.jpg/500px-AbubakarSalim.jpg',
+  'Covent Garden': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/%E6%9F%AF%E8%8A%AC%E5%9C%92_%2840400019900%29.jpg/500px-%E6%9F%AF%E8%8A%AC%E5%9C%92_%2840400019900%29.jpg',
+  'Soho': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Golden_Square%2C_Soho%2C_London_-_September_2006.jpg/500px-Golden_Square%2C_Soho%2C_London_-_September_2006.jpg',
+  'Notting Hill / Portobello': 'https://upload.wikimedia.org/wikipedia/pt/d/dc/Notting_Hill.jpg',
+  'Piccadilly Circus (noite)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Picadilly_Circus%2C_London_%289308789313%29.jpg/500px-Picadilly_Circus%2C_London_%289308789313%29.jpg',
+  'Westminster + Big Ben': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Elizabeth_Tower%2C_June_2022.jpg/500px-Elizabeth_Tower%2C_June_2022.jpg',
+  'Trafalgar Square': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Trafalgar_Square%2C_London_2_-_Jun_2009.jpg/500px-Trafalgar_Square%2C_London_2_-_Jun_2009.jpg',
+  'Greenwich': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/312SFEC_LONDON-20070917.JPG/500px-312SFEC_LONDON-20070917.JPG',
+  'National Gallery': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Galer%C3%ADa_Nacional%2C_Londres%2C_Inglaterra%2C_2014-08-07%2C_DD_035.JPG/500px-Galer%C3%ADa_Nacional%2C_Londres%2C_Inglaterra%2C_2014-08-07%2C_DD_035.JPG',
+  'Science Museum': 'https://upload.wikimedia.org/wikipedia/commons/b/ba/LFCG-TRANSPARENT.png',
+  'West End (musical)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Open_Happiness_Piccadilly_Circus_Blue-Pink_Hour_120917-1126-jikatu.jpg/500px-Open_Happiness_Piccadilly_Circus_Blue-Pink_Hour_120917-1126-jikatu.jpg',
+  'Comida (afternoon tea / pub)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/London_Skyline_%28125508655%29.jpeg/500px-London_Skyline_%28125508655%29.jpeg',
+  'Horse Guards Parade': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Royalhorseguardparade_london.JPG/500px-Royalhorseguardparade_london.JPG',
+  'Tate Modern': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Tate_Modern_viewed_from_Thames_Pleasure_Boat_-_geograph.org.uk_-_307445.jpg/500px-Tate_Modern_viewed_from_Thames_Pleasure_Boat_-_geograph.org.uk_-_307445.jpg',
+  'Victoria & Albert (V&A)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Victoria_and_Albert_Museum_Logo.svg/500px-Victoria_and_Albert_Museum_Logo.svg.png',
+  'Churchill War Rooms': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Cabinet_war_rooms.jpg/500px-Cabinet_war_rooms.jpg',
+  'Kensington Palace': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Kensington_Palace%2C_the_South_Front_-_geograph.org.uk_-_287402.jpg/500px-Kensington_Palace%2C_the_South_Front_-_geograph.org.uk_-_287402.jpg',
+  'Camden / Borough Market': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Camden_Town_9.jpg/500px-Camden_Town_9.jpg',
+  'Shoreditch / Hyde Park / Regent’s Park': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Shoreditch_tube_station_lar.jpg/500px-Shoreditch_tube_station_lar.jpg',
+  'Passeio de barco no Tâmisa': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/View_of_the_City_of_London_financial_district_from_across_the_Thames_2024-11-20.jpg/500px-View_of_the_City_of_London_financial_district_from_across_the_Thames_2024-11-20.jpg',
+  'Bate-volta (Windsor / Oxford / Bath)': '',
+  'London Eye': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/London_Eye_7_2012-07-08.jpg/500px-London_Eye_7_2012-07-08.jpg',
+  'Disneyland Paris': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Disneyland_Park_05%2C_Paris_22_August_2013.jpg/500px-Disneyland_Park_05%2C_Paris_22_August_2013.jpg',
+  'Louvre': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/France_location_map-Regions_and_departements-2016.svg/500px-France_location_map-Regions_and_departements-2016.svg.png',
+  'Torre Eiffel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Eiffel_Tower_from_Champ-de-Mars%2C_7_August_2017.jpg/500px-Eiffel_Tower_from_Champ-de-Mars%2C_7_August_2017.jpg',
+  'Notre-Dame': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Notre-Dame_de_Paris%2C_4_October_2017.jpg/500px-Notre-Dame_de_Paris%2C_4_October_2017.jpg',
+  'Arco do Triunfo': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg/500px-Arc_de_Triomphe%2C_Paris_21_October_2010.jpg',
+  'Sainte-Chapelle (+ Conciergerie)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Szensapel.jpg/500px-Szensapel.jpg',
+  'Montmartre + Sacré-Cœur': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Le_sacre_coeur.jpg/500px-Le_sacre_coeur.jpg',
+  'Opéra Garnier': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Paris_Opera_full_frontal_architecture%2C_May_2009.jpg/500px-Paris_Opera_full_frontal_architecture%2C_May_2009.jpg',
+  'Torre Montparnasse': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Remote_view_of_the_Tour_Montparnasse_%26_Eiffel_Tower_in_2005.jpg/500px-Remote_view_of_the_Tour_Montparnasse_%26_Eiffel_Tower_in_2005.jpg',
+  'Panthéon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Panth%C3%A9on%2C_Paris_25_March_2012.jpg/500px-Panth%C3%A9on%2C_Paris_25_March_2012.jpg',
+  'Cruzeiro no Sena (embarque)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Promenade_%C3%A0_Orl%C3%A9ans_avril_2022-04-19.jpg/500px-Promenade_%C3%A0_Orl%C3%A9ans_avril_2022-04-19.jpg',
+  'Marais (Place des Vosges)': 'https://upload.wikimedia.org/wikipedia/commons/7/71/Marin-marais.jpg',
+  'Quartier Latin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Quartier_Commons.jpg/500px-Quartier_Commons.jpg',
+  'Museu Picasso': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Pablo_picasso_1.jpg/500px-Pablo_picasso_1.jpg',
+  'Marmottan Monet': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Claude_Monet_1899_Nadar.jpg/500px-Claude_Monet_1899_Nadar.jpg',
+  'Cluny (Idade Média)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/H%C3%B4tel_de_Cluny%2C_Paris_24_April_2012.jpg/500px-H%C3%B4tel_de_Cluny%2C_Paris_24_April_2012.jpg',
+  'Versalhes': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Versailles_collage.jpg/500px-Versailles_collage.jpg',
+  'Musée d’Orsay': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Gare_d%27Orsay_%2849570190081%29.jpg/500px-Gare_d%27Orsay_%2849570190081%29.jpg',
+  'Orangerie (Nenúfares)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/2011-12-Musee_de_lorangerie.jpg/500px-2011-12-Musee_de_lorangerie.jpg',
+  'Musée Rodin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Auguste_Rodin_portrait_middle_aged.jpg/500px-Auguste_Rodin_portrait_middle_aged.jpg',
+  'Les Invalides (Napoleão)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Invalides_aerial_view.jpg/500px-Invalides_aerial_view.jpg',
+  'Catacumbas': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Catacumbas%2C_Par%C3%ADs%2C_Francia%2C_2022-11-01%2C_DD_117-119_HDR.jpg/500px-Catacumbas%2C_Par%C3%ADs%2C_Francia%2C_2022-11-01%2C_DD_117-119_HDR.jpg',
+  'Moulin Rouge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Moulin_Rouge%2C_17_April_2011.jpg/500px-Moulin_Rouge%2C_17_April_2011.jpg',
+  'Saint-Germain + Île Saint-Louis': 'https://upload.wikimedia.org/wikipedia/pt/d/d2/Logo_PSG.png',
+  'Champs-Élysées / Tuileries / Luxembourg': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Avenue_des_Champs-Elys%C3%A9es_from_top_of_Arc_de_triomphe_Paris.jpg/500px-Avenue_des_Champs-Elys%C3%A9es_from_top_of_Arc_de_triomphe_Paris.jpg',
+  'Piquenique no Champ de Mars': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Paul_Thomas_Anderson_-_BFI_Southbank.jpg/500px-Paul_Thomas_Anderson_-_BFI_Southbank.jpg',
+  'Sagrada Família': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/SF_maig_2_cropped.jpg/500px-SF_maig_2_cropped.jpg',
+  'Park Güell': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/El_bicho_2.JPG/500px-El_bicho_2.JPG',
+  'MNAC (Palau Nacional)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/WLM14ES_-_Palau_Nacional_i_seu_del_MNAC_de_Barcelona_-_MARIA_ROSA_FERRE.jpg/500px-WLM14ES_-_Palau_Nacional_i_seu_del_MNAC_de_Barcelona_-_MARIA_ROSA_FERRE.jpg',
+  'Casa Batlló': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Casa_Batllo_Overview_Barcelona_Spain_cut.jpg/500px-Casa_Batllo_Overview_Barcelona_Spain_cut.jpg',
+  'La Pedrera / Casa Milà': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Casa_Mil%C3%A0_-_Barcelona%2C_Spain_-_Jan_2007.jpg/500px-Casa_Mil%C3%A0_-_Barcelona%2C_Spain_-_Jan_2007.jpg',
+  'Bunkers del Carmel (pôr do sol)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Tur%C3%B3_Rovira.jpg/500px-Tur%C3%B3_Rovira.jpg',
+  'Palau de la Música': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Palau_de_musica_2.JPG/500px-Palau_de_musica_2.JPG',
+  'Barri Gòtic (Catedral)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/050529_Barcelona_099.jpg/500px-050529_Barcelona_099.jpg',
+  'El Born (Santa Maria del Mar)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/JordiGalceran2009.JPG/500px-JordiGalceran2009.JPG',
+  'Tapas + vermut (Carrer Blai)': '',
+  'Museus (Picasso / Miró / MACBA)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Aerial_view_of_Barcelona%2C_Spain_%2851227309370%29_edited.jpg/500px-Aerial_view_of_Barcelona%2C_Spain_%2851227309370%29_edited.jpg',
+  'Hospital de Sant Pau': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Barcelona_San_Pau_2.JPG/500px-Barcelona_San_Pau_2.JPG',
+  'Montjuïc (Castell / Font Màgica)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Fale_-_Spain_-_Barcelona_-_8.jpg/500px-Fale_-_Spain_-_Barcelona_-_8.jpg',
+  'La Boqueria': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Barcelona_-_Mercat_de_Sant_Josep_%28la_Boqueria%29_-_Entrance.jpg/500px-Barcelona_-_Mercat_de_Sant_Josep_%28la_Boqueria%29_-_Entrance.jpg',
+  'Praia de Barceloneta': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Barrio_de_la_Barceloneta.jpg/500px-Barrio_de_la_Barceloneta.jpg',
+  'Bate-volta (Montserrat / Sitges / Girona)': 'https://upload.wikimedia.org/wikipedia/pt/8/84/BATE_Borisov_2020.png',
+  'Flamenco / Camp Nou': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/2023-11-16_Gala_de_los_Latin_Grammy%2C_27_%28cropped%29.jpg/500px-2023-11-16_Gala_de_los_Latin_Grammy%2C_27_%28cropped%29.jpg',
+  'Museo del Prado': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Museo_del_Prado_2016_%2825185969599%29.jpg/500px-Museo_del_Prado_2016_%2825185969599%29.jpg',
+  'Palácio Real': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Palacio_Real_de_Madrid_Julio_2016_%28cropped%29.jpg/500px-Palacio_Real_de_Madrid_Julio_2016_%28cropped%29.jpg',
+  'Catedral de la Almudena': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Almudena_2022_-_overview.jpg/500px-Almudena_2022_-_overview.jpg',
+  'Salamanca (dia de compras)': 'https://upload.wikimedia.org/wikipedia/pt/9/98/Real_Madrid.png',
+  'Templo de Debod (pôr do sol)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/El_Templo_de_Debod.JPG/500px-El_Templo_de_Debod.JPG',
+  'Plaza Mayor': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Plaza_Mayor_de_Madrid_06.jpg/500px-Plaza_Mayor_de_Madrid_06.jpg',
+  'Puerta del Sol': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Plaza_de_sol_madrid.jpg/500px-Plaza_de_sol_madrid.jpg',
+  'Gran Vía': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Callao_in_the_twilight_zone.jpg/500px-Callao_in_the_twilight_zone.jpg',
+  'Thyssen-Bornemisza': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Museo_Thyssen-Bornemisza_%28Madrid%29_07.jpg/500px-Museo_Thyssen-Bornemisza_%28Madrid%29_07.jpg',
+  'Parque del Retiro': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Le_parc_du_Retiro_%28Madrid%29_%284684143195%29.jpg/500px-Le_parc_du_Retiro_%28Madrid%29_%284684143195%29.jpg',
+  'Churros con chocolate (San Ginés)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Chocolater%C3%ADa_%22San_Gines%22-Madrid-2009.jpg/500px-Chocolater%C3%ADa_%22San_Gines%22-Madrid-2009.jpg',
+  'Gastronomia (Mercado San Miguel)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Olivas-Abuela_%28Madrid%29.jpg/500px-Olivas-Abuela_%28Madrid%29.jpg',
+  'Bairros (La Latina / Malasaña / Chueca)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Montagem_S%C3%A3o_Gon%C3%A7alo%2C_RJ_2021.jpg/500px-Montagem_S%C3%A3o_Gon%C3%A7alo%2C_RJ_2021.jpg',
+  'Toledo (bate-volta)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg/500px-Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg',
+  'Flamenco (Corral de la Morería)': 'https://upload.wikimedia.org/wikipedia/commons/8/8d/Belen_maya.jpg',
+  'Bernabéu / rooftops': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Estadio_Santiago_Bernab%C3%A9u_-_Real_Madrid-Real_Sociedad.jpg/500px-Estadio_Santiago_Bernab%C3%A9u_-_Real_Madrid-Real_Sociedad.jpg',
+  'Extras (CaixaForum / Sorolla / Cibeles / Atocha)': 'https://upload.wikimedia.org/wikipedia/pt/9/98/Real_Madrid.png',
+  'Segóvia / El Escorial / Ávila': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Landscape-mountain-architecture-sky-town-city-626579.jpg/500px-Landscape-mountain-architecture-sky-town-city-626579.jpg',
+  'Reina Sofía (Guernica)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Reina_Do%C3%B1a_Sofia.jpg/500px-Reina_Do%C3%B1a_Sofia.jpg',
+  'Linha do Douro → Pinhão': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/CP_1400_Aregos_-_Mosteiro.jpg/500px-CP_1400_Aregos_-_Mosteiro.jpg',
+  'Livraria Lello': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Livraria_Lello%2C_Porto.jpg/500px-Livraria_Lello%2C_Porto.jpg',
+  'Ribeira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Porto_des_de_Vila_Nova_de_Gaia.JPG/500px-Porto_des_de_Vila_Nova_de_Gaia.JPG',
+  'Ponte D. Luís I': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Portugal_Porto_location_map.svg/500px-Portugal_Porto_location_map.svg.png',
+  'Miradouro Serra do Pilar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Porto_-_Jardim_do_Morro.jpg/500px-Porto_-_Jardim_do_Morro.jpg',
+  'Estação São Bento': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Esta%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Porto_-_S%C3%A3o_Bento.JPG/500px-Esta%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Porto_-_S%C3%A3o_Bento.JPG',
+  'Torre dos Clérigos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Vitoria-Igreja_e_Torre_dos_Cl%C3%A9rigos_%281%29_%28cropped%29.jpg/500px-Vitoria-Igreja_e_Torre_dos_Cl%C3%A9rigos_%281%29_%28cropped%29.jpg',
+  'Caves de Gaia (prova)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Sandeman_%283897743435%29_%282%29.jpg/500px-Sandeman_%283897743435%29_%282%29.jpg',
+  'Jardins do Palácio de Cristal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Porto%2C_Domingos_Alv%C3%A3o_87_%289289451845%29.jpg/500px-Porto%2C_Domingos_Alv%C3%A3o_87_%289289451845%29.jpg',
+  'Mercado do Bolhão': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Bolh%C3%A3o2023.jpg/500px-Bolh%C3%A3o2023.jpg',
+  'Majestic Café': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Porto_Cafe_Majestic.JPG/500px-Porto_Cafe_Majestic.JPG',
+  'Palácio da Bolsa / São Francisco': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/BolsaValoresPorto.jpg/500px-BolsaValoresPorto.jpg',
+  'Francesinha / jantar Cais da Ribeira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/A_Francesinha_%285401346513%29.jpg/500px-A_Francesinha_%285401346513%29.jpg',
+  'WOW / Serralves / Casa da Música': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Sagres_Beer_in_Cascais_Beach_%283799770001%29.jpg/500px-Sagres_Beer_in_Cascais_Beach_%283799770001%29.jpg',
+  'Sintra — Pena + Regaleira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Sintra_-_Palacio_da_Pena_%2820332995770%29_%28cropped2%29.jpg/500px-Sintra_-_Palacio_da_Pena_%2820332995770%29_%28cropped2%29.jpg',
+  'Alfama + Castelo de São Jorge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Alfama%2C_Lisboa_-_2010-09-09.jpg/500px-Alfama%2C_Lisboa_-_2010-09-09.jpg',
+  'Fado ao vivo em Alfama': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Jose_malhoa_fado.jpg/500px-Jose_malhoa_fado.jpg',
+  'Museu Calouste Gulbenkian': 'https://upload.wikimedia.org/wikipedia/commons/f/f1/FCG_Calouste_Gulbenkian_Logo.jpg',
+  'Chiado / Bairro Alto': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Estaci%C3%B3n_Metropolitana_de_Baixa-Chiado._%286086217241%29.jpg/500px-Estaci%C3%B3n_Metropolitana_de_Baixa-Chiado._%286086217241%29.jpg',
+  'Baixa / Praça do Comércio': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Lisbon_main_square_%2836622604910%29.jpg/500px-Lisbon_main_square_%2836622604910%29.jpg',
+  'Miradouro Senhora do Monte': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Miradouro_Nossa_Senhora_do_Monte_II.jpg/500px-Miradouro_Nossa_Senhora_do_Monte_II.jpg',
+  'Belém — Jerónimos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Bel%C3%A9m_%28Lisboa%29_localiza%C3%A7%C3%A3o.svg/500px-Bel%C3%A9m_%28Lisboa%29_localiza%C3%A7%C3%A3o.svg.png',
+  'Torre de Belém': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Torre_Bel%C3%A9m_April_2009-4a.jpg/500px-Torre_Bel%C3%A9m_April_2009-4a.jpg',
+  'Time Out Market': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Drinks_at_Mercado_da_Ribeira_%28Lissabon_2016%29_%2826003375942%29.jpg/500px-Drinks_at_Mercado_da_Ribeira_%28Lissabon_2016%29_%2826003375942%29.jpg',
+  'LX Factory': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/LX_Factory_%2822379332901%29.jpg/500px-LX_Factory_%2822379332901%29.jpg',
+  'Oceanário (Parque das Nações)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Lisbon_Oceanarium_%2834535938846%29.jpg/500px-Lisbon_Oceanarium_%2834535938846%29.jpg',
+  'Noite (Pink Street / Ginjinha)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Estadio_da_Luz_2012.jpg/500px-Estadio_da_Luz_2012.jpg',
+  'Museus extras (Azulejo / Arte Antiga / MAAT)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Rock_in_Rio_-_Madrid_2012.jpg/500px-Rock_in_Rio_-_Madrid_2012.jpg',
+  'Bate-voltas (Cascais / Óbidos / Setúbal)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Kessler_Antonius_von_Padua.jpg/500px-Kessler_Antonius_von_Padua.jpg',
+};
 // rótulo de cidade p/ montar a busca (Maps abre o LOCAL pelo nome, não a coordenada)
 const CITY = {londres:'Londres', paris:'Paris', barcelona:'Barcelona', madri:'Madrid', porto:'Porto', lisboa:'Lisboa'};
 function term(nome, cid){
   const n = nome.split(' (')[0].split(' — ')[0].split(' / ')[0].trim();
   return n + ', ' + (CITY[cid]||'');
-}
-// foto do local via Wikipedia (sem API key; CORS liberado). Cache por termo.
-const photoCache = new Map();
-async function wikiThumb(q){
-  if(photoCache.has(q)) return photoCache.get(q);
-  for(const lang of ['pt','en']){
-    try{
-      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search`
-        + `&gsrsearch=${encodeURIComponent(q)}&gsrlimit=1&prop=pageimages&piprop=thumbnail`
-        + `&pithumbsize=320&format=json&origin=*`;
-      const j = await (await fetch(u)).json();
-      const pages = j && j.query && j.query.pages;
-      if(pages){ const p = Object.values(pages)[0];
-        if(p && p.thumbnail && p.thumbnail.source){ photoCache.set(q, p.thumbnail.source); return p.thumbnail.source; } }
-    }catch(e){}
-  }
-  photoCache.set(q, null); return null;
 }
 // cria todos os markers uma vez
 const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
@@ -242,9 +348,7 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const q = term(nome, cid);
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
-    + `<a class="pop-photo-link" href="${gmaps}" target="_blank" style="display:none">`
-    + `<img class="pop-photo" alt="" style="width:230px;max-width:100%;height:130px;`
-    + `object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>`
+    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:250px;height:150px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
     + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
@@ -255,20 +359,6 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   return {m,pri};
 });
 // ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
-map.on('popupopen', async (e)=>{
-  const node = e.popup._contentNode, m = e.popup._source;
-  if(!node || !m) return;
-  const img = node.querySelector('.pop-photo');
-  if(!img || img.dataset.done) return;
-  img.dataset.done = '1';
-  const src = await wikiThumb(m._q);
-  if(src){
-    const wrap = node.querySelector('.pop-photo-link');
-    img.onload = ()=>{ if(wrap) wrap.style.display='block'; if(e.popup.update) e.popup.update(); };
-    img.src = src;
-  }
-});
-
 function activePris(){
   return {r:f_r.checked, o:f_o.checked, y:f_y.checked, w:f_w.checked};
 }
