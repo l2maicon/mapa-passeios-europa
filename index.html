@@ -178,6 +178,7 @@ const P = [
   [41.1360,-8.6155,'WOW / Serralves / Casa da Música','y','porto'],
   // ===== Lisboa + Sintra =====
   [38.7876,-9.3906,'Sintra — Pena + Regaleira','r','lisboa'],
+  [38.7683,-9.0942,'Altice Arena — Web Summit (Parque das Nações)','r','lisboa'],
   [38.7139,-9.1335,'Alfama + Castelo de São Jorge','r','lisboa'],
   [38.7115,-9.1290,'Fado ao vivo em Alfama','r','lisboa'],
   [38.7377,-9.1537,'Museu Calouste Gulbenkian','r','lisboa'],
@@ -214,6 +215,7 @@ function icon(color){
 const ICONS = Object.fromEntries(Object.entries(PRI).map(([k,v])=>[k, icon(v.color)]));
 
 const PHOTO = {
+  'Altice Arena — Web Summit (Parque das Nações)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/MEO_Arena.png/500px-MEO_Arena.png',
   'Harry Potter Studio (Warner)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Harry_Potter_wordmark_%28British%29.svg/500px-Harry_Potter_wordmark_%28British%29.svg.png',
   'Buckingham + Troca da Guarda': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Buckingham_Palace_-_01.jpg/500px-Buckingham_Palace_-_01.jpg',
   'British Museum': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/John_Edward_Gray._Photograph._Wellcome_V0027572_%28cropped%29.jpg/500px-John_Edward_Gray._Photograph._Wellcome_V0027572_%28cropped%29.jpg',
