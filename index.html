@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de Passeios 🔴🟠 — POA→Europa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #map{position:absolute;top:64px;bottom:0;left:0;right:0}
+  header{position:absolute;top:0;left:0;right:0;height:64px;background:#1b1b2f;color:#fff;
+    display:flex;align-items:center;gap:8px;padding:0 12px;z-index:1000;flex-wrap:wrap;overflow-x:auto}
+  header b{font-size:15px;margin-right:6px;white-space:nowrap}
+  .city{background:#2d2d44;color:#fff;border:0;border-radius:14px;padding:6px 11px;font-size:13px;
+    cursor:pointer;white-space:nowrap}
+  .city:hover{background:#3d3d5c}
+  .legend{background:#fff;padding:8px 10px;font-size:12px;line-height:1.6;border-radius:6px;
+    box-shadow:0 1px 5px rgba(0,0,0,.3)}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:middle;
+    border:2px solid #fff;box-shadow:0 0 0 1px #999}
+  .r{background:#e23b3b}.o{background:#f0932b}
+  .leaflet-popup-content{font-size:13px;line-height:1.45}
+  .leaflet-popup-content a{color:#1560d4}
+  .pri{font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <b>🗺️ Passeios 🔴 obrigatórios + 🟠 quase certos</b>
+  <button class="city" data-c="londres">🇬🇧 Londres</button>
+  <button class="city" data-c="paris">🇫🇷 Paris</button>
+  <button class="city" data-c="barcelona">🇪🇸 Barcelona</button>
+  <button class="city" data-c="madri">🇪🇸 Madri</button>
+  <button class="city" data-c="porto">🇵🇹 Porto+Douro</button>
+  <button class="city" data-c="lisboa">🇵🇹 Lisboa+Sintra</button>
+  <button class="city" data-c="all">🌍 Ver tudo</button>
+</header>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// blog/vídeo por cidade (rodapé do popup)
+const SRC = {
+  londres:  {blog:'https://apureguria.com/europa/inglaterra/roteiro-em-londres-3-dias/', vid:'https://www.youtube.com/watch?v=fIRrT0q0ENA'},
+  paris:    {blog:'https://apureguria.com/europa/franca/roteiro-em-paris-3-dias-atracoes/', vid:'https://www.youtube.com/watch?v=aknb-gzgzIg'},
+  barcelona:{blog:'https://apureguria.com/europa/espanha/o-que-fazer-em-barcelona-roteiro-e-dicas-para-3-dias/', vid:null},
+  madri:    {blog:'https://apureguria.com/europa/espanha/museu-do-prado-de-graca/', vid:null},
+  porto:    {blog:'https://apureguria.com/europa/portugal/o-que-fazer-em-porto-pontos-turisticos/', vid:'https://www.youtube.com/watch?v=G7yexXyPLAY'},
+  lisboa:   {blog:'https://apureguria.com/europa/portugal/o-que-fazer-em-lisboa-atracoes-dicas/', vid:'https://www.youtube.com/watch?v=wN2trl3dnV8'},
+};
+// [lat, lng, nome, prioridade 'r'|'o', cidade]
+const P = [
+  // Londres
+  [51.6907,-0.4197,'Harry Potter Studio (Warner)','r','londres'],
+  [51.5014,-0.1419,'Buckingham + Troca da Guarda','r','londres'],
+  [51.5194,-0.1270,'British Museum','r','londres'],
+  [51.4967,-0.1764,'Natural History Museum','r','londres'],
+  [51.5081,-0.0759,'Torre de Londres','r','londres'],
+  [51.5055,-0.0754,'Tower Bridge','r','londres'],
+  [51.4994,-0.1273,'Westminster Abbey','r','londres'],
+  [51.5138,-0.0984,"St Paul's Cathedral",'r','londres'],
+  [51.5111,-0.0836,'Sky Garden (mirante)','r','londres'],
+  [51.5123,-0.1226,'Covent Garden','r','londres'],
+  [51.5136,-0.1341,'Soho','r','londres'],
+  [51.5170,-0.2050,'Notting Hill / Portobello','r','londres'],
+  [51.5100,-0.1340,'Piccadilly Circus (noite)','r','londres'],
+  [51.5007,-0.1246,'Westminster + Big Ben','r','londres'],
+  [51.4780,-0.0015,'Greenwich','r','londres'],
+  [51.5089,-0.1283,'National Gallery','o','londres'],
+  [51.4978,-0.1745,'Science Museum','o','londres'],
+  [51.5115,-0.1281,'West End (musical)','o','londres'],
+  // Paris
+  [48.8722,2.7758,'Disneyland Paris','r','paris'],
+  [48.8606,2.3376,'Louvre','r','paris'],
+  [48.8584,2.2945,'Torre Eiffel','r','paris'],
+  [48.8530,2.3499,'Notre-Dame','r','paris'],
+  [48.8738,2.2950,'Arco do Triunfo','r','paris'],
+  [48.8554,2.3450,'Sainte-Chapelle (+ Conciergerie)','r','paris'],
+  [48.8867,2.3431,'Montmartre + Sacré-Cœur','r','paris'],
+  [48.8720,2.3316,'Opéra Garnier','r','paris'],
+  [48.8421,2.3220,'Torre Montparnasse','r','paris'],
+  [48.8462,2.3464,'Panthéon','r','paris'],
+  [48.8608,2.2936,'Cruzeiro no Sena (embarque)','r','paris'],
+  [48.8558,2.3656,'Marais (Place des Vosges)','r','paris'],
+  [48.8499,2.3470,'Quartier Latin','r','paris'],
+  [48.8598,2.3626,'Museu Picasso','o','paris'],
+  [48.8508,2.3440,'Cluny (Idade Média)','o','paris'],
+  [48.8049,2.1204,'Versalhes','o','paris'],
+  // Barcelona
+  [41.4036,2.1744,'Sagrada Família','r','barcelona'],
+  [41.4145,2.1527,'Park Güell','r','barcelona'],
+  [41.3684,2.1533,'MNAC (Palau Nacional)','r','barcelona'],
+  [41.3916,2.1650,'Casa Batlló','o','barcelona'],
+  [41.3953,2.1619,'La Pedrera / Casa Milà','o','barcelona'],
+  [41.4195,2.1620,'Bunkers del Carmel (pôr do sol)','o','barcelona'],
+  [41.3875,2.1751,'Palau de la Música','o','barcelona'],
+  [41.3839,2.1762,'Barri Gòtic (Catedral)','o','barcelona'],
+  [41.3838,2.1819,'El Born (Santa Maria del Mar)','o','barcelona'],
+  // Madri
+  [40.4138,-3.6921,'Museo del Prado','r','madri'],
+  [40.4180,-3.7143,'Palácio Real','r','madri'],
+  [40.4290,-3.6810,'Salamanca (dia de compras)','r','madri'],
+  [40.4240,-3.7176,'Templo de Debod (pôr do sol)','r','madri'],
+  [40.4155,-3.7074,'Plaza Mayor','r','madri'],
+  [40.4169,-3.7033,'Puerta del Sol','r','madri'],
+  [40.4200,-3.7020,'Gran Vía','r','madri'],
+  [40.4160,-3.6949,'Thyssen-Bornemisza','o','madri'],
+  [40.4152,-3.6844,'Parque del Retiro','o','madri'],
+  // Porto + Douro
+  [41.1878,-7.5340,'Linha do Douro → Pinhão','r','porto'],
+  [41.1470,-8.6148,'Livraria Lello','r','porto'],
+  [41.1408,-8.6110,'Ribeira','r','porto'],
+  [41.1396,-8.6094,'Ponte D. Luís I','r','porto'],
+  [41.1372,-8.6099,'Miradouro Serra do Pilar','r','porto'],
+  [41.1457,-8.6108,'Estação São Bento','r','porto'],
+  [41.1456,-8.6142,'Torre dos Clérigos','r','porto'],
+  [41.1370,-8.6130,'Caves de Gaia (prova)','o','porto'],
+  [41.1479,-8.6220,'Jardins do Palácio de Cristal','o','porto'],
+  [41.1497,-8.6070,'Mercado do Bolhão','o','porto'],
+  [41.1476,-8.6060,'Majestic Café','o','porto'],
+  // Lisboa + Sintra
+  [38.7876,-9.3906,'Sintra — Pena + Regaleira','r','lisboa'],
+  [38.7139,-9.1335,'Alfama + Castelo de São Jorge','r','lisboa'],
+  [38.7115,-9.1290,'Fado ao vivo em Alfama','r','lisboa'],
+  [38.7377,-9.1537,'Museu Calouste Gulbenkian','r','lisboa'],
+  [38.7107,-9.1426,'Chiado / Bairro Alto','r','lisboa'],
+  [38.7077,-9.1366,'Baixa / Praça do Comércio','r','lisboa'],
+  [38.7186,-9.1330,'Miradouro Senhora do Monte','r','lisboa'],
+  [38.6979,-9.2064,'Belém — Jerónimos','o','lisboa'],
+  [38.6916,-9.2160,'Torre de Belém','o','lisboa'],
+  [38.7071,-9.1459,'Time Out Market','o','lisboa'],
+  [38.7027,-9.1786,'LX Factory','o','lisboa'],
+  [38.7634,-9.0938,'Oceanário (Parque das Nações)','o','lisboa'],
+];
+const VIEWS = {
+  londres:[51.509,-0.118,11], paris:[48.860,2.345,12], barcelona:[41.395,2.165,12.5],
+  madri:[40.418,-3.703,13], porto:[41.145,-8.611,13], lisboa:[38.72,-9.16,11],
+};
+const map = L.map('map',{zoomControl:true}).setView([46,3],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+
+function mk(color){
+  return L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9],
+    html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 0 1.5px #666"></div>`});
+}
+const iconR = mk('#e23b3b'), iconO = mk('#f0932b');
+const layers = {}; // cidade -> layerGroup
+P.forEach(([lat,lng,nome,pri,cid])=>{
+  const s = SRC[cid]||{};
+  const gmaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  let html = `<div class="pri">${pri==='r'?'🔴 Obrigatório':'🟠 Quase certo'}</div><b>${nome}</b><br>`
+    + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
+  if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
+  if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
+  const m = L.marker([lat,lng],{icon: pri==='r'?iconR:iconO}).bindPopup(html)
+    .bindTooltip(nome,{direction:'top',offset:[0,-8]});
+  (layers[cid] ||= L.layerGroup().addTo(map)).addLayer(m);
+});
+document.querySelectorAll('.city').forEach(b=>b.onclick=()=>{
+  const c=b.dataset.c;
+  if(c==='all'){ map.setView([46,3],5); return; }
+  const v=VIEWS[c]; map.flyTo([v[0],v[1]],v[2]);
+});
+// legenda
+const lg=L.control({position:'bottomright'});
+lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');
+  d.innerHTML='<span class="dot r"></span>🔴 obrigatório<br><span class="dot o"></span>🟠 quase certo<br>'
+    +'<small>popup: Google Maps · blog · vídeo</small>';return d;};
+lg.addTo(map);
+</script>
+</body>
+</html>
