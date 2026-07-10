@@ -242,9 +242,10 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const q = term(nome, cid);
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
-    + `<img class="pop-photo" alt="" style="display:none;width:230px;max-width:100%;height:130px;`
-    + `object-fit:cover;border-radius:7px;margin:7px 0;background:#eee"/>`
-    + `<a href="${gmaps}" target="_blank">📍 Abrir o local no Google Maps</a>`;
+    + `<a class="pop-photo-link" href="${gmaps}" target="_blank" style="display:none">`
+    + `<img class="pop-photo" alt="" style="width:230px;max-width:100%;height:130px;`
+    + `object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>`
+    + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
   if(nota)   html += `<div class="note">${nota}</div>`;
@@ -261,7 +262,11 @@ map.on('popupopen', async (e)=>{
   if(!img || img.dataset.done) return;
   img.dataset.done = '1';
   const src = await wikiThumb(m._q);
-  if(src){ img.onload = ()=>{ img.style.display='block'; if(e.popup._updateLayout) e.popup.update(); }; img.src = src; }
+  if(src){
+    const wrap = node.querySelector('.pop-photo-link');
+    img.onload = ()=>{ if(wrap) wrap.style.display='block'; if(e.popup.update) e.popup.update(); };
+    img.src = src;
+  }
 });
 
 function activePris(){
