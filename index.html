@@ -51,6 +51,12 @@
     <button class="city" data-c="lisboa">🇵🇹 Lisboa+Sintra</button>
     <button class="city" data-c="all">🌍 Tudo</button>
   </div>
+  <div class="row">
+    <b>📅 Filtrar dia:</b>
+    <select id="f_dia" style="background:#2d2d44;color:#fff;border:0;border-radius:12px;padding:5px 9px;font-size:12.5px;cursor:pointer"></select>
+    <button class="city" id="dia_clear">limpar</button>
+    <span style="font-size:11.5px;opacity:.8">(mostra certos + talvez do dia)</span>
+  </div>
 </header>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -401,11 +407,19 @@ function term(nome, cid){
   return n + ', ' + (CITY[cid]||'');
 }
 // cria todos os markers uma vez
+const DIA = {"londres|Harry Potter Studio (Warner)": {"c": ["05/11"]}, "londres|Buckingham + Troca da Guarda": {"c": ["04/11"]}, "londres|British Museum": {"c": ["03/11"]}, "londres|Natural History Museum": {"c": ["02/11"]}, "londres|Torre de Londres": {"c": ["03/11"]}, "londres|Tower Bridge": {"c": ["03/11"]}, "londres|Westminster Abbey": {"c": ["04/11"]}, "londres|St Paul's Cathedral": {"c": ["04/11"], "m": ["03/11"]}, "londres|Sky Garden (mirante)": {"c": ["04/11"], "m": ["03/11"]}, "londres|Covent Garden": {"c": ["03/11"]}, "londres|Soho": {"c": ["03/11"]}, "londres|Piccadilly Circus (noite)": {"c": ["02/11"], "m": ["03/11"]}, "londres|Westminster + Big Ben": {"c": ["04/11"]}, "londres|Trafalgar Square": {"c": ["03/11"], "m": ["04/11"]}, "londres|Greenwich": {"c": ["06/11"]}, "londres|National Gallery": {"c": ["03/11"]}, "londres|Science Museum": {"c": ["02/11"]}, "londres|West End (musical)": {"c": ["03/11"]}, "londres|Horse Guards Parade": {"m": ["04/11"]}, "londres|Tate Modern": {"m": ["03/11"]}, "londres|Victoria & Albert (V&A)": {"m": ["02/11"]}, "londres|Churchill War Rooms": {"m": ["04/11"]}, "londres|Kensington Palace": {"m": ["02/11"]}, "londres|Borough Market": {"c": ["03/11"]}, "londres|Hyde Park": {"m": ["02/11"]}, "londres|Passeio de barco no Tâmisa": {"m": ["06/11"]}, "londres|Oxford": {"c": ["05/11"]}, "paris|Disneyland Paris": {"c": ["30/10"]}, "paris|Louvre": {"c": ["31/10"]}, "paris|Torre Eiffel": {"c": ["31/10"], "m": ["29/10"]}, "paris|Notre-Dame": {"c": ["31/10"]}, "paris|Arco do Triunfo": {"c": ["01/11"]}, "paris|Sainte-Chapelle (+ Conciergerie)": {"c": ["31/10"]}, "paris|Montmartre + Sacré-Cœur": {"c": ["01/11"]}, "paris|Opéra Garnier": {"c": ["02/11"]}, "paris|Panthéon": {"c": ["31/10"]}, "paris|Cruzeiro no Sena (embarque)": {"c": ["29/10"]}, "paris|Marais (Place des Vosges)": {"m": ["02/11"]}, "paris|Quartier Latin": {"c": ["31/10"]}, "paris|Museu Picasso": {"m": ["02/11"]}, "paris|Cluny (Idade Média)": {"m": ["31/10"]}, "paris|Versalhes": {"c": ["01/11"]}, "paris|Musée d’Orsay": {"m": ["31/10", "02/11"]}, "paris|Orangerie (Nenúfares)": {"m": ["31/10"]}, "paris|Musée Rodin": {"m": ["31/10"]}, "paris|Les Invalides (Napoleão)": {"m": ["31/10"]}, "paris|Moulin Rouge": {"m": ["01/11"]}, "paris|Saint-Germain-des-Prés": {"m": ["31/10"]}, "paris|Île Saint-Louis": {"m": ["31/10"]}, "paris|Champs-Élysées": {"c": ["01/11"]}, "paris|Jardin des Tuileries": {"m": ["31/10"]}, "paris|Jardin du Luxembourg": {"m": ["31/10"]}, "paris|Piquenique no Champ de Mars": {"m": ["31/10"]}, "barcelona|Sagrada Família": {"c": ["27/10"]}, "barcelona|Park Güell": {"c": ["28/10"]}, "barcelona|MNAC (Palau Nacional)": {"c": ["28/10"]}, "barcelona|Casa Batlló": {"c": ["27/10"]}, "barcelona|La Pedrera / Casa Milà": {"c": ["27/10"]}, "barcelona|Bunkers del Carmel (pôr do sol)": {"c": ["28/10"]}, "barcelona|Palau de la Música": {"c": ["27/10"]}, "barcelona|Barri Gòtic (Catedral)": {"c": ["27/10"]}, "barcelona|El Born (Santa Maria del Mar)": {"c": ["27/10"]}, "barcelona|Tapas + vermut (Carrer Blai)": {"c": ["27/10"]}, "barcelona|Museu Picasso": {"m": ["27/10"]}, "barcelona|Fundació Joan Miró": {"m": ["28/10"]}, "barcelona|Hospital de Sant Pau": {"c": ["28/10"]}, "barcelona|Montjuïc (Castell / Font Màgica)": {"c": ["28/10"]}, "barcelona|La Boqueria": {"c": ["27/10"]}, "barcelona|Praia de Barceloneta": {"m": ["28/10"]}, "barcelona|Montserrat": {"m": ["28/10"]}, "madri|Museo del Prado": {"c": ["25/10"]}, "madri|Palácio Real": {"c": ["25/10"]}, "madri|Catedral de la Almudena": {"c": ["25/10"]}, "madri|Salamanca (dia de compras)": {"c": ["26/10"]}, "madri|Templo de Debod (pôr do sol)": {"c": ["24/10"]}, "madri|Plaza Mayor": {"c": ["24/10"]}, "madri|Puerta del Sol": {"c": ["24/10"]}, "madri|Gran Vía": {"c": ["24/10"]}, "madri|Thyssen-Bornemisza": {"c": ["25/10"]}, "madri|Parque del Retiro": {"c": ["25/10"]}, "madri|Churros con chocolate (San Ginés)": {"m": ["24/10"]}, "madri|Gastronomia (Mercado San Miguel)": {"m": ["24/10", "26/10"]}, "madri|La Latina": {"m": ["26/10"]}, "madri|CaixaForum": {"m": ["25/10"]}, "madri|Museo Sorolla": {"m": ["26/10"]}, "madri|Palacio de Cibeles": {"m": ["25/10"]}, "madri|Estación de Atocha": {"m": ["26/10"]}, "porto|Linha do Douro → Pinhão": {"c": ["07/11"]}, "porto|Livraria Lello": {"c": ["08/11"]}, "porto|Ribeira": {"c": ["08/11"]}, "porto|Ponte D. Luís I": {"c": ["08/11"]}, "porto|Miradouro Serra do Pilar": {"c": ["08/11"]}, "porto|Estação São Bento": {"c": ["08/11"]}, "porto|Torre dos Clérigos": {"c": ["08/11"]}, "porto|Caves de Gaia (prova)": {"c": ["07/11"], "m": ["08/11"]}, "porto|Jardins do Palácio de Cristal": {"m": ["08/11"]}, "porto|Mercado do Bolhão": {"m": ["08/11"]}, "porto|Majestic Café": {"m": ["08/11"]}, "porto|Palácio da Bolsa": {"m": ["08/11"]}, "porto|Igreja de São Francisco": {"m": ["08/11"]}, "porto|Francesinha / jantar Cais da Ribeira": {"c": ["08/11"]}, "porto|WOW – World of Wine": {"m": ["08/11"]}, "lisboa|Sintra — Pena + Regaleira": {"c": ["13/11"]}, "lisboa|Altice Arena — Web Summit (Parque das Nações)": {"c": ["09/11", "10/11", "11/11", "12/11"]}, "lisboa|Alfama + Castelo de São Jorge": {"c": ["14/11"]}, "lisboa|Fado ao vivo em Alfama": {"c": ["09/11"]}, "lisboa|Museu Calouste Gulbenkian": {"c": ["11/11"]}, "lisboa|Chiado / Bairro Alto": {"c": ["11/11"]}, "lisboa|Baixa / Praça do Comércio": {"c": ["11/11"], "m": ["10/11"]}, "lisboa|Miradouro Senhora do Monte": {"c": ["11/11"], "m": ["14/11"]}, "lisboa|Belém — Jerónimos": {"c": ["09/11"]}, "lisboa|Torre de Belém": {"c": ["09/11"]}, "lisboa|Time Out Market": {"c": ["14/11"], "m": ["11/11"]}, "lisboa|LX Factory": {"m": ["14/11"]}, "lisboa|Oceanário (Parque das Nações)": {"c": ["12/11"]}, "lisboa|Noite (Pink Street / Ginjinha)": {"c": ["11/11"], "m": ["14/11"]}, "lisboa|Museu Nacional do Azulejo": {"m": ["14/11"]}, "lisboa|Museu Nacional de Arte Antiga": {"m": ["14/11"]}, "lisboa|MAAT": {"m": ["09/11"]}, "lisboa|Cascais / Estoril": {"m": ["10/11"]}, "lisboa|Óbidos": {"m": ["12/11"]}};
 const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const s = SRC[cid]||{};
   const q = term(nome, cid);
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  const dd = DIA[cid+'|'+nome];
+  let diaHtml='';
+  if(dd){
+    if(dd.c&&dd.c.length) diaHtml+=`<div style="font-size:12.5px"><b>📅 Certo:</b> ${dd.c.join(' · ')}</div>`;
+    if(dd.m&&dd.m.length) diaHtml+=`<div style="font-size:12.5px;color:#b8580a"><b>📅 Talvez:</b> ${dd.m.join(' · ')}</div>`;
+  }
   let html = `<div class="pri">${PRI[pri].label}</div><b>${nome}</b><br>`
+    + diaHtml
     + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:700px;height:420px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
     + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
@@ -414,21 +428,29 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html,{maxWidth:756,minWidth:420})
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
   m._q = q;
-  return {m,pri};
+  return {m,pri,dias:dd||null};
 });
 // ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
 function activePris(){
   return {r:f_r.checked, o:f_o.checked, y:f_y.checked, w:f_w.checked};
 }
 function applyFilter(){
-  const on = activePris(); let n=0;
-  markers.forEach(({m,pri})=>{
-    if(on[pri]){ if(!map.hasLayer(m)) m.addTo(map); n++; }
+  const on = activePris(); const day=document.getElementById('f_dia').value; let n=0;
+  markers.forEach(({m,pri,dias})=>{
+    let show;
+    if(day==='all') show=on[pri];
+    else show = !!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day));
+    if(show){ if(!map.hasLayer(m)) m.addTo(map); n++; }
     else if(map.hasLayer(m)) map.removeLayer(m);
   });
-  document.getElementById('count').textContent = `${n} pontos no mapa`;
+  document.getElementById('count').textContent = day==='all' ? `${n} pontos no mapa` : `${n} ponto(s) no dia ${day}`;
 }
 ['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilter));
+const DAYS=['24/10','25/10','26/10','27/10','28/10','29/10','30/10','31/10','01/11','02/11','03/11','04/11','05/11','06/11','07/11','08/11','09/11','10/11','11/11','12/11','13/11','14/11'];
+const _sel=document.getElementById('f_dia');
+_sel.innerHTML='<option value="all">Todos os dias</option>'+DAYS.map(d=>`<option value="${d}">${d}</option>`).join('');
+_sel.addEventListener('change',applyFilter);
+document.getElementById('dia_clear').onclick=()=>{_sel.value='all';applyFilter();};
 document.querySelectorAll('.city').forEach(b=>b.onclick=()=>{
   const c=b.dataset.c;
   if(c==='all'){ map.setView([46,3],5); return; }
