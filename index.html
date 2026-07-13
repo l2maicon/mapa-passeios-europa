@@ -438,7 +438,7 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   if(dd&&dd.m&&dd.m.length) diaHtml+=`<div style="font-size:12.5px;color:#b8580a"><b>📅 Talvez:</b> ${dd.m.join(' · ')}</div>`;
   let html = `<div class="pri">${PRI[pri].label}${cm?' \u00b7 '+cm.ic+' '+cm.nome:''}</div><b>${nome}</b><br>`
     + diaHtml
-    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:700px;height:420px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
+    + (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:595px;height:357px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
     + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`;
   if(s.blog) html += ` · <a href="${s.blog}" target="_blank">📝 Blog</a>`;
   if(s.vid)  html += ` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`;
