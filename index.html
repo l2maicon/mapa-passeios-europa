@@ -507,7 +507,7 @@ const _cat=document.getElementById('f_cat');
 _cat.innerHTML='<option value="all">Todas as categorias</option>'+Object.entries(CATMETA).map(([k,v])=>`<option value="${k}">${v.ic} ${v.nome}</option>`).join('');
 _cat.addEventListener('change',applyFilter);
 document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter();};
-document.querySelectorAll('.city').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('.city[data-c]').forEach(b=>b.onclick=()=>{
   const c=b.dataset.c;
   if(c==='all'){ map.setView([46,3],5); return; }
   const v=VIEWS[c]; map.flyTo([v[0],v[1]],v[2]);
