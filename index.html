@@ -498,7 +498,7 @@ const lg=L.control({position:'bottomright'});
 lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');
   d.innerHTML='<span class="dot r"></span>🔴 obrigatório<br><span class="dot o"></span>🟠 quase certo<br>'
     +'<span class="dot y"></span>🟡 opcional<br><span class="dot w"></span>⚪ sem interesse<br>'
-    +'<small>filtro no topo · popup: foto + Maps + blog + vídeo</small>';return d;};
+    +'<small>filtros à esquerda · popup: foto + Maps + blog + vídeo</small>';return d;};
 lg.addTo(map);
 
 // estado inicial: só 🔴 + 🟠 marcados (como no HTML)
