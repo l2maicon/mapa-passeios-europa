@@ -66,7 +66,11 @@
   </div>
   <div class="grp">
     <b>📅 Filtrar dia</b>
-    <select id="f_dia" style="background:#2d2d44;color:#fff;border:0;border-radius:10px;padding:6px 9px;font-size:12.5px;cursor:pointer"></select>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="city" id="dia_prev" title="Dia anterior" style="padding:6px 11px">◀</button>
+      <select id="f_dia" style="background:#2d2d44;color:#fff;border:0;border-radius:10px;padding:6px 9px;font-size:12.5px;cursor:pointer;flex:1;min-width:0"></select>
+      <button class="city" id="dia_next" title="Próximo dia" style="padding:6px 11px">▶</button>
+    </div>
     <button class="city" id="dia_clear">limpar dia</button>
     <span class="hint">mostra certos + talvez do dia</span>
   </div>
@@ -460,7 +464,7 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(html,{maxWidth:756,minWidth:420})
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
   m._q = q;
-  return {m,pri,dias:dd||null,cat};
+  return {m,pri,dias:dd||null,cat,cid};
 });
 // ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
 function activePris(){
@@ -475,14 +479,30 @@ function applyFilter(){
     else if(map.hasLayer(m)) map.removeLayer(m);
   });
   document.getElementById('count').textContent = day==='all' ? `${n} pontos no mapa` : `${n} ponto(s) no dia ${day}`;
-  if(day!=='all' && n>0 && !vis.some(mk=>map.getBounds().contains(mk.getLatLng()))) map.setView([46,3],5);
+}
+function focusDayCity(){
+  const day=document.getElementById('f_dia').value;
+  if(day==='all') return;
+  const cnt={};
+  markers.forEach(({m,cid})=>{ if(map.hasLayer(m)) cnt[cid]=(cnt[cid]||0)+1; });
+  const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  if(top && VIEWS[top]){ const v=VIEWS[top]; map.flyTo([v[0],v[1]],v[2]); }
+  else map.setView([46,3],5);
 }
 ['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilter));
 const DAYS=['24/10','25/10','26/10','27/10','28/10','29/10','30/10','31/10','01/11','02/11','03/11','04/11','05/11','06/11','07/11','08/11','09/11','10/11','11/11','12/11','13/11','14/11'];
 const _sel=document.getElementById('f_dia');
 _sel.innerHTML='<option value="all">Todos os dias</option>'+DAYS.map(d=>`<option value="${d}">${d}</option>`).join('');
-_sel.addEventListener('change',applyFilter);
+_sel.addEventListener('change',()=>{applyFilter();focusDayCity();});
 document.getElementById('dia_clear').onclick=()=>{_sel.value='all';applyFilter();};
+function stepDay(delta){
+  const cur=_sel.value;
+  let i = cur==='all' ? (delta>0?-1:DAYS.length) : DAYS.indexOf(cur);
+  i=Math.max(0,Math.min(DAYS.length-1,i+delta));
+  _sel.value=DAYS[i]; applyFilter(); focusDayCity();
+}
+document.getElementById('dia_prev').onclick=()=>stepDay(-1);
+document.getElementById('dia_next').onclick=()=>stepDay(1);
 const _cat=document.getElementById('f_cat');
 _cat.innerHTML='<option value="all">Todas as categorias</option>'+Object.entries(CATMETA).map(([k,v])=>`<option value="${k}">${v.ic} ${v.nome}</option>`).join('');
 _cat.addEventListener('change',applyFilter);
