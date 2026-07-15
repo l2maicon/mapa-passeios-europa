@@ -503,6 +503,9 @@ lg.addTo(map);
 
 // estado inicial: só 🔴 + 🟠 marcados (como no HTML)
 applyFilter();
+// corrige tiles ao entrar (container redimensionou p/ a sidebar)
+setTimeout(()=>map.invalidateSize(),150);
+window.addEventListener('load',()=>map.invalidateSize());
 </script>
 </body>
 </html>
