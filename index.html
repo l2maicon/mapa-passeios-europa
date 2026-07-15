@@ -527,13 +527,18 @@ function applyFilter(){
   });
   document.getElementById('count').textContent = day==='all' ? `${n} pontos no mapa` : `${n} ponto(s) no dia ${day}`;
 }
+function cityBounds(cid){
+  const ll=markers.filter(e=>e.cid===cid && map.hasLayer(e.m)).map(e=>e.m.getLatLng());
+  return ll.length ? L.latLngBounds(ll) : null;
+}
 function focusDayCity(){
   const day=document.getElementById('f_dia').value;
   if(day==='all') return;
   const cnt={};
   markers.forEach(({m,cid})=>{ if(map.hasLayer(m)) cnt[cid]=(cnt[cid]||0)+1; });
   const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
-  if(top && VIEWS[top]){ const v=VIEWS[top]; map.flyTo([v[0],v[1]],v[2]); }
+  const bb=top?cityBounds(top):null;
+  if(bb) map.flyToBounds(bb,{padding:[55,55],maxZoom:13});
   else map.setView([46,3],5);
 }
 ['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilter));
@@ -557,7 +562,9 @@ document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter()
 document.querySelectorAll('.city[data-c]').forEach(b=>b.onclick=()=>{
   const c=b.dataset.c;
   if(c==='all'){ map.setView([46,3],5); return; }
-  const v=VIEWS[c]; map.flyTo([v[0],v[1]],v[2]);
+  const bb=cityBounds(c);
+  if(bb) map.flyToBounds(bb,{padding:[55,55],maxZoom:13});
+  else { const v=VIEWS[c]; map.flyTo([v[0],v[1]],v[2]); }
 });
 function showCityBtn(c,r){ return (c!=='marselha'||r==='marselha') && (c!=='londres'||r==='principal'); }
 function onRotaChange(){ const r=curRota();
