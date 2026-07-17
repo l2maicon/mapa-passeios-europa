@@ -84,6 +84,15 @@
     <span class="hint">mostra certos + talvez do dia</span>
   </div>
   <div class="grp">
+    <b>⏰ Horário</b>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="city" id="hora_prev" title="Horário anterior" style="padding:6px 11px">◀</button>
+      <select id="f_hora" style="background:#2d2d44;color:#fff;border:0;border-radius:10px;padding:6px 9px;font-size:12.5px;cursor:pointer;flex:1;min-width:0"></select>
+      <button class="city" id="hora_next" title="Próximo horário" style="padding:6px 11px">▶</button>
+    </div>
+    <span class="hint">só horários com item · abre o modal · setas viram o dia</span>
+  </div>
+  <div class="grp">
     <b>🏷️ Categoria</b>
     <select id="f_cat" style="background:#2d2d44;color:#fff;border:0;border-radius:10px;padding:6px 9px;font-size:12.5px;cursor:pointer"></select>
     <button class="city" id="cat_clear">limpar categoria</button>
@@ -485,9 +494,14 @@ const ROTAS = {"principal": {"label": "Principal", "DIA": {}, "HORA": {}}, "mars
 function curRota(){ const e=document.getElementById('f_rota'); return e?e.value:'principal'; }
 function effDia(cid,nome){ const k=cid+'|'+nome, o=ROTAS[curRota()].DIA; return (o&&o[k]!==undefined)?o[k]:DIA[k]; }
 function effHora(cid,nome){ const k=cid+'|'+nome, o=ROTAS[curRota()].HORA; return (o&&o[k]!==undefined)?o[k]:HORA[k]; }
+function parseHora(h){ if(!h) return null; const m=String(h).match(/(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null; }
+function fmtHora(min){ return String(Math.floor(min/60)).padStart(2,'0')+'h'+String(min%60).padStart(2,'0'); }
 function diaHtmlFor(cid,nome){ const dd=effDia(cid,nome), hh=effHora(cid,nome); let h='';
   if(dd&&dd.c&&dd.c.length) h+=`<div style="font-size:12.5px"><b>📅 Certo:</b> ${dd.c.join(' · ')}</div>`;
-  if(hh) h+=`<div style="font-size:12.5px"><b>⏰ Horário:</b> ${hh}</div>`;
+  const hasDay = !!(dd && ((dd.c&&dd.c.length)||(dd.m&&dd.m.length)));
+  const min = parseHora(hh);
+  if(hasDay && min===null) h+=`<div style="display:inline-block;background:#b8580a;color:#fff;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:700;margin:4px 0">⏰ SEM HORÁRIO${hh?' · '+hh:''}</div>`;
+  else if(hh) h+=`<div style="font-size:12.5px"><b>⏰ Horário:</b> ${hh}</div>`;
   if(dd&&dd.m&&dd.m.length) h+=`<div style="font-size:12.5px;color:#b8580a"><b>📅 Talvez:</b> ${dd.m.join(' · ')}</div>`;
   return h; }
 const FOLGA_ONLY=new Set(['Chartres (catedral)','Reims (Champagne)','Guimarães (Castelo)','Braga (Bom Jesus)']);
@@ -541,24 +555,80 @@ function focusDayCity(){
   if(bb) map.flyToBounds(bb,{padding:[55,55],maxZoom:13});
   else map.setView([46,3],5);
 }
-['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilter));
+['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{applyFilter();rebuildHoras();}));
 const DAYS=['24/10','25/10','26/10','27/10','28/10','29/10','30/10','31/10','01/11','02/11','03/11','04/11','05/11','06/11','07/11','08/11','09/11','10/11','11/11','12/11','13/11','14/11'];
 const _sel=document.getElementById('f_dia');
 _sel.innerHTML='<option value="all">Todos os dias</option>'+DAYS.map(d=>`<option value="${d}">${d}</option>`).join('');
-_sel.addEventListener('change',()=>{applyFilter();focusDayCity();});
-document.getElementById('dia_clear').onclick=()=>{_sel.value='all';applyFilter();};
+_sel.addEventListener('change',()=>{applyFilter();focusDayCity();rebuildHoras();});
+document.getElementById('dia_clear').onclick=()=>{_sel.value='all';applyFilter();rebuildHoras();};
 function stepDay(delta){
   const cur=_sel.value;
   let i = cur==='all' ? (delta>0?-1:DAYS.length) : DAYS.indexOf(cur);
   i=Math.max(0,Math.min(DAYS.length-1,i+delta));
-  _sel.value=DAYS[i]; applyFilter(); focusDayCity();
+  _sel.value=DAYS[i]; applyFilter(); focusDayCity(); rebuildHoras();
 }
 document.getElementById('dia_prev').onclick=()=>stepDay(-1);
 document.getElementById('dia_next').onclick=()=>stepDay(1);
+// ===== filtro de HORÁRIO =====
+let SLOTS=[];
+function slotsForDay(day){
+  if(day==='all') return [];
+  const on=activePris(); const catSel=document.getElementById('f_cat').value;
+  const arr=[];
+  markers.forEach(e=>{
+    const dias=effDia(e.cid,e.nome);
+    const inDay = !!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day));
+    if(!inRota(e.cid,e.nome) || !on[e.pri] || !inDay || !(catSel==='all'||e.cat===catSel)) return;
+    const min=parseHora(effHora(e.cid,e.nome));
+    arr.push({e,min,label: min===null?'Sem Horário':fmtHora(min)});
+  });
+  arr.sort((a,b)=>{
+    if(a.min===null&&b.min===null) return a.e.nome.localeCompare(b.e.nome);
+    if(a.min===null) return -1; if(b.min===null) return 1;
+    return a.min-b.min || a.e.nome.localeCompare(b.e.nome);
+  });
+  const cnt={}; arr.forEach(x=>cnt[x.label]=(cnt[x.label]||0)+1);
+  arr.forEach(x=> x.opt = cnt[x.label]>1 ? x.label+' - '+x.e.nome : x.label);
+  return arr;
+}
+function rebuildHoras(){
+  const day=document.getElementById('f_dia').value, sel=document.getElementById('f_hora');
+  SLOTS=slotsForDay(day);
+  if(day==='all'||!SLOTS.length){
+    sel.innerHTML='<option value="">'+(day==='all'?'(escolha um dia)':'(nenhum item)')+'</option>';
+    sel.disabled=true; return;
+  }
+  sel.disabled=false;
+  sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
+}
+function openSlot(i){
+  const x=SLOTS[i]; if(!x) return;
+  const mk=x.e.m; if(!map.hasLayer(mk)) return;
+  map.setView(mk.getLatLng(), Math.max(map.getZoom(),13), {animate:true});
+  mk.openPopup();
+}
+function stepHora(delta){
+  const selH=document.getElementById('f_hora'), selD=document.getElementById('f_dia');
+  if(selD.value==='all'){ stepDay(delta>0?1:-1); rebuildHoras(); if(SLOTS.length){ const ni=delta>0?0:SLOTS.length-1; selH.value=String(ni); openSlot(ni);} return; }
+  let i = selH.value===''? (delta>0?-1:SLOTS.length) : +selH.value;
+  i += delta;
+  if(i>=0 && i<SLOTS.length){ selH.value=String(i); openSlot(i); return; }
+  // virou o dia
+  let di=DAYS.indexOf(selD.value), guard=0;
+  while(guard++<DAYS.length){
+    di += (delta>0?1:-1);
+    if(di<0||di>=DAYS.length) return;
+    selD.value=DAYS[di]; applyFilter(); focusDayCity(); rebuildHoras();
+    if(SLOTS.length){ const ni=delta>0?0:SLOTS.length-1; selH.value=String(ni); openSlot(ni); return; }
+  }
+}
+document.getElementById('f_hora').addEventListener('change',e=>{ if(e.target.value!=='') openSlot(+e.target.value); });
+document.getElementById('hora_prev').onclick=()=>stepHora(-1);
+document.getElementById('hora_next').onclick=()=>stepHora(1);
 const _cat=document.getElementById('f_cat');
 _cat.innerHTML='<option value="all">Todas as categorias</option>'+Object.entries(CATMETA).map(([k,v])=>`<option value="${k}">${v.ic} ${v.nome}</option>`).join('');
-_cat.addEventListener('change',applyFilter);
-document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter();};
+_cat.addEventListener('change',()=>{applyFilter();rebuildHoras();});
+document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter();rebuildHoras();};
 document.querySelectorAll('.city[data-c]').forEach(b=>b.onclick=()=>{
   const c=b.dataset.c;
   if(c==='all'){ map.setView([46,3],5); return; }
@@ -570,7 +640,7 @@ function showCityBtn(c,r){ return (c!=='marselha'||r==='marselha') && (c!=='lond
 function onRotaChange(){ const r=curRota();
   markers.forEach(e=> e.m.setPopupContent(e.mkPopup()));
   document.querySelectorAll('.city[data-c]').forEach(b=>{ const c=b.dataset.c; b.style.display=(c==='all'||showCityBtn(c,r))?'':'none'; });
-  document.getElementById('f_dia').value='all'; applyFilter(); map.setView([46,3],5);
+  document.getElementById('f_dia').value='all'; applyFilter(); rebuildHoras(); map.setView([46,3],5);
 }
 document.getElementById('f_rota').addEventListener('change',onRotaChange);
 onRotaChange();
