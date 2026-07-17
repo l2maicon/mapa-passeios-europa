@@ -587,8 +587,7 @@ function slotsForDay(day){
     if(a.min===null) return -1; if(b.min===null) return 1;
     return a.min-b.min || a.e.nome.localeCompare(b.e.nome);
   });
-  const cnt={}; arr.forEach(x=>cnt[x.label]=(cnt[x.label]||0)+1);
-  arr.forEach(x=> x.opt = cnt[x.label]>1 ? x.label+' - '+x.e.nome : x.label);
+  arr.forEach(x=> x.opt = x.label+' - '+x.e.nome);
   return arr;
 }
 function rebuildHoras(){
