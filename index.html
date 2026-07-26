@@ -442,7 +442,7 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
     + (s.vid?` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`:'')
     + (nota?`<div class="note">${nota}</div>`:'');
   function mkPopup(){ return `<div class="pri">${PRI[pri].label}${cm?' \u00b7 '+cm.ic+' '+cm.nome:''}</div><b>${nome}</b><br>`+diaHtmlFor(cid,nome)+staticHtml; }
-  const m = L.marker([lat,lng],{icon:ICONS[pri]}).bindPopup(mkPopup(),{maxWidth:756,minWidth:420})
+  const m = L.marker([lat,lng],{icon:ICONS[pri],zIndexOffset:1000}).bindPopup(mkPopup(),{maxWidth:756,minWidth:420})
     .bindTooltip(nome,{direction:'top',offset:[0,-8]});
   m._q = q;
   return {m,pri,cat,cid,nome,mkPopup};
@@ -465,7 +465,7 @@ const stationMarkers = STATIONS.map(([lat,lng,nome,d,h,txt])=>{
     +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
     +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
     +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
-  const m=L.marker([lat,lng],{icon:STATION_ICON}).bindPopup(pop,{maxWidth:340,minWidth:260})
+  const m=L.marker([lat,lng],{icon:STATION_ICON,zIndexOffset:-1000}).bindPopup(pop,{maxWidth:340,minWidth:260})
     .bindTooltip('🚆 '+nome,{direction:'top',offset:[0,-14]});
   return {m,d,h,min,nome,emoji:'🚆'};
 });
@@ -488,28 +488,33 @@ const airportMarkers = AIRPORTS.map(([lat,lng,nome,d,h,txt])=>{
     +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
     +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
     +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
-  const m=L.marker([lat,lng],{icon:AIRPORT_ICON}).bindPopup(pop,{maxWidth:340,minWidth:260})
+  const m=L.marker([lat,lng],{icon:AIRPORT_ICON,zIndexOffset:-1000}).bindPopup(pop,{maxWidth:340,minWidth:260})
     .bindTooltip('✈️ '+nome,{direction:'top',offset:[0,-14]});
   return {m,d,h,min,nome,emoji:'✈️'};
 });
 // camada de trânsito (trens + aeroportos) — filtram por dia+hora
 const transitMarkers = stationMarkers.concat(airportMarkers);
 // ===== HOTÉIS RESERVADOS (pin fixo — SEMPRE visível, ignora filtros) =====
+// [lat,lng,nome,head,txt, diaChegada, horaLargarMalas] — o pin fica SEMPRE no mapa,
+// mas ganha um slot no filtro de hora só no dia de chegada (deixar as malas, após o transporte).
 const HOTELS = [
   [40.4249,-3.7066,'Hostal Rías Bajas','✅ RESERVADO — Madrid · 3 noites (24→27/10)',
-   'San Bernardo 35, 1º-Izda · 28015 Madrid<br>☎️ +34 600 63 63 32 · conf. <b>6103.280.036</b> · PIN 6185<br>Quarto Duplo Superior, cama de casal · <b>€359,15 (R$ 2.097)</b><br>Check-in 14:30–23:30 · check-out até 11:30 · cancela grátis até 2 dias antes'],
+   'San Bernardo 35, 1º-Izda · 28015 Madrid<br>☎️ +34 600 63 63 32 · conf. <b>6103.280.036</b> · PIN 6185<br>Quarto Duplo Superior, cama de casal · <b>€359,15 (R$ 2.097)</b><br>Check-in 14:30–23:30 · check-out até 11:30 · cancela grátis até 2 dias antes',
+   '24/10','11:30'],
 ];
-const hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt])=>{
+const hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt,d,h])=>{
+  const min=parseHora(h);
   const gm=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome+' Madrid')}`;
   const pop=`<div class="pri" style="background:#8957e5">🏨 Hotel reservado</div><b>${nome}</b><br>`
     +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
-    +`<div style="font-size:12.5px">${txt}</div>`
+    +(d?`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b> · 🧳 deixar as malas (na chegada)</div>`:'')
+    +`<div style="font-size:12.5px;margin-top:3px">${txt}</div>`
     +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
   const m=L.marker([lat,lng],{icon:HOTEL_ICON}).bindPopup(pop,{maxWidth:320,minWidth:260})
     .bindTooltip('🏨 '+nome,{direction:'top',offset:[0,-14]});
-  return {m,nome};
+  return {m,nome,d,h,min};
 });
-hotelMarkers.forEach(h=>h.m.addTo(map)); // fixos, nunca filtrados
+hotelMarkers.forEach(h=>h.m.addTo(map)); // fixos no mapa, nunca some por filtro
 // ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
 function activePris(){
   return {r:f_r.checked, o:f_o.checked, y:f_y.checked, w:f_w.checked};
@@ -577,6 +582,11 @@ function slotsForDay(day){
   transitMarkers.forEach(st=>{
     if(st.d!==day) return;
     arr.push({e:{m:st.m,nome:st.emoji+' '+st.nome}, min:st.min, label: st.min===null?'Sem Horário':fmtHora(st.min)});
+  });
+  // hotel entra no filtro só no dia de chegada (deixar malas); na saída não passa pelo hotel
+  hotelMarkers.forEach(ht=>{
+    if(ht.d!==day) return;
+    arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome}, min:ht.min, label: ht.min===null?'Sem Horário':fmtHora(ht.min)});
   });
   arr.sort((a,b)=>{
     if(a.min===null&&b.min===null) return a.e.nome.localeCompare(b.e.nome);
