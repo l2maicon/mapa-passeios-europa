@@ -263,6 +263,13 @@ function icon(color){
     html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 0 1.5px #666"></div>`});
 }
 const ICONS = Object.fromEntries(Object.entries(PRI).map(([k,v])=>[k, icon(v.color)]));
+// pins especiais (quadrado arredondado, diferente das bolinhas de prioridade)
+function pinIcon(emoji,bg){
+  return L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-15],
+    html:`<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;background:${bg};border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1.5px #444,0 1px 3px rgba(0,0,0,.45)">${emoji}</div>`});
+}
+const STATION_ICON = pinIcon('🚆','#1f6feb');
+const HOTEL_ICON   = pinIcon('🏨','#8957e5');
 
 const PHOTO = {
   'Vieux-Port': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/The_old_Port_%28Vieux_Port%29_of_Marseille_During_early_spring_days.jpg/500px-The_old_Port_%28Vieux_Port%29_of_Marseille_During_early_spring_days.jpg',
@@ -439,6 +446,44 @@ const markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
   m._q = q;
   return {m,pri,cat,cid,nome,mkPopup};
 });
+// ===== ESTAÇÕES DE TREM RESERVADAS (pin ferroviário; aparecem/somem por dia+hora) =====
+// 3 pernas compradas (RESERVAS.md); cada evento = uma partida/chegada num dia/hora.
+const STATIONS = [
+  [40.4065,-3.6895,'Madrid–Puerta de Atocha','27/10','13:57','🚄 <b>AVE 03141</b> — Madrid → Barcelona<br>Partida <b>13:57</b> → Barcelona-Sants 16:59<br>Reserva <b>R6CRBD</b> · Coach 8 · assentos 07A/07B · €64,60 casal (R$ 377)'],
+  [41.3791,2.1401,'Barcelona-Sants','27/10','16:59','🚄 <b>AVE 03141</b> — chegada de Madrid<br>Chega <b>16:59</b> (partiu 13:57) · Reserva <b>R6CRBD</b>'],
+  [41.3791,2.1401,'Barcelona-Sants','30/10','09:26','🚆 <b>TGV inOui 9708</b> — Barcelona → Marseille (via Narbonne)<br>Partida <b>09:26</b> · Coach 15 · assentos 558/559<br>Reserva <b>HLNL43</b> · €288 casal (R$ 1.682)'],
+  [43.1896,3.0043,'Narbonne (conexão)','30/10','11:38','🔄 <b>Conexão — 23 min</b><br>Chega <b>11:38</b> (TGV inOui 9708) → parte <b>12:01</b> (Intercités 4657) → Marseille<br>Reserva <b>HLNL43</b>'],
+  [43.3027,5.3803,'Marseille-Saint-Charles','30/10','14:44','🚆 <b>Intercités 4657</b> (1ª cl) — chegada de Narbonne<br>Chega <b>14:44</b> · Coach 1 "Club Four" · assentos 63/64<br>Reserva <b>HLNL43</b>'],
+  [43.3027,5.3803,'Marseille-Saint-Charles','31/10','19:03','🚄 <b>Frecciarossa 6148</b> — Marseille → Paris<br>Partida <b>19:03</b> → Paris-Gare-de-Lyon 22:28<br>PNR <b>AAZE2N</b> · Coach 7 · assentos 4A/4B · €90 casal (R$ 526)'],
+  [48.8443,2.3739,'Paris-Gare-de-Lyon','31/10','22:28','🚄 <b>Frecciarossa 6148</b> — chegada de Marseille<br>Chega <b>22:28</b> (partiu 19:03) · PNR <b>AAZE2N</b>'],
+];
+const stationMarkers = STATIONS.map(([lat,lng,nome,d,h,txt])=>{
+  const min=parseHora(h);
+  const gm=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome.replace(/\s*\(.*\)/,''))}`;
+  const pop=`<div class="pri" style="background:#1f6feb">🚆 Estação · reserva confirmada</div><b>${nome}</b><br>`
+    +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
+    +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
+    +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
+  const m=L.marker([lat,lng],{icon:STATION_ICON}).bindPopup(pop,{maxWidth:340,minWidth:260})
+    .bindTooltip('🚆 '+nome,{direction:'top',offset:[0,-14]});
+  return {m,d,h,min,nome};
+});
+// ===== HOTÉIS RESERVADOS (pin fixo — SEMPRE visível, ignora filtros) =====
+const HOTELS = [
+  [40.4249,-3.7066,'Hostal Rías Bajas','✅ RESERVADO — Madrid · 3 noites (24→27/10)',
+   'San Bernardo 35, 1º-Izda · 28015 Madrid<br>☎️ +34 600 63 63 32 · conf. <b>6103.280.036</b> · PIN 6185<br>Quarto Duplo Superior, cama de casal · <b>€359,15 (R$ 2.097)</b><br>Check-in 14:30–23:30 · check-out até 11:30 · cancela grátis até 2 dias antes'],
+];
+const hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt])=>{
+  const gm=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome+' Madrid')}`;
+  const pop=`<div class="pri" style="background:#8957e5">🏨 Hotel reservado</div><b>${nome}</b><br>`
+    +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
+    +`<div style="font-size:12.5px">${txt}</div>`
+    +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
+  const m=L.marker([lat,lng],{icon:HOTEL_ICON}).bindPopup(pop,{maxWidth:320,minWidth:260})
+    .bindTooltip('🏨 '+nome,{direction:'top',offset:[0,-14]});
+  return {m,nome};
+});
+hotelMarkers.forEach(h=>h.m.addTo(map)); // fixos, nunca filtrados
 // ao abrir o popup, busca a foto do local (Wikipedia) e mostra se achar
 function activePris(){
   return {r:f_r.checked, o:f_o.checked, y:f_y.checked, w:f_w.checked};
@@ -450,6 +495,12 @@ function applyFilter(){
     const inDay = day==='all' || (!!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day)));
     const show = inRota(cid,nome) && on[pri] && inDay && (catSel==='all'||cat===catSel);
     if(show){ if(!map.hasLayer(m)) m.addTo(map); n++; vis.push(m); }
+    else if(map.hasLayer(m)) map.removeLayer(m);
+  });
+  // estações reservadas: aparecem/somem só pelo DIA (ignoram prioridade/categoria/rota)
+  stationMarkers.forEach(({m,d})=>{
+    const show = day==='all' || d===day;
+    if(show){ if(!map.hasLayer(m)) m.addTo(map); }
     else if(map.hasLayer(m)) map.removeLayer(m);
   });
   document.getElementById('count').textContent = day==='all' ? `${n} pontos no mapa` : `${n} ponto(s) no dia ${day}`;
@@ -494,6 +545,11 @@ function slotsForDay(day){
     if(!inRota(e.cid,e.nome) || !on[e.pri] || !inDay || !(catSel==='all'||e.cat===catSel)) return;
     const min=parseHora(effHora(e.cid,e.nome));
     arr.push({e,min,label: min===null?'Sem Horário':fmtHora(min)});
+  });
+  // estações reservadas do dia entram no filtro de horário
+  stationMarkers.forEach(st=>{
+    if(st.d!==day) return;
+    arr.push({e:{m:st.m,nome:'🚆 '+st.nome}, min:st.min, label: st.min===null?'Sem Horário':fmtHora(st.min)});
   });
   arr.sort((a,b)=>{
     if(a.min===null&&b.min===null) return a.e.nome.localeCompare(b.e.nome);
@@ -561,6 +617,8 @@ const lg=L.control({position:'bottomright'});
 lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');
   d.innerHTML='<span class="dot r"></span>🔴 obrigatório<br><span class="dot o"></span>🟠 quase certo<br>'
     +'<span class="dot y"></span>🟡 opcional<br><span class="dot w"></span>⚪ sem interesse<br>'
+    +'<span style="display:inline-block;width:13px;height:13px;background:#1f6feb;border-radius:3px;border:1.5px solid #fff;box-shadow:0 0 0 1px #444;vertical-align:-2px;margin-right:6px"></span>🚆 estação reservada (filtra por dia/hora)<br>'
+    +'<span style="display:inline-block;width:13px;height:13px;background:#8957e5;border-radius:3px;border:1.5px solid #fff;box-shadow:0 0 0 1px #444;vertical-align:-2px;margin-right:6px"></span>🏨 hotel reservado (fixo)<br>'
     +'<small>filtros à esquerda · popup: foto + Maps + blog + vídeo</small>';return d;};
 lg.addTo(map);
 
