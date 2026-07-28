@@ -694,7 +694,7 @@ window.addEventListener('load',()=>map.invalidateSize());
     walk: {color:'#2563eb', dash:'1,8',  emoji:'🚶', maxZoom:16},
     train:{color:'#1f6feb', dash:null,   emoji:'🚆', maxZoom:14},
   };
-  let layer=null, mover=null, raf=null, banner=null, token=0;
+  let layer=null, mover=null, raf=null, banner=null, token=0, lastOrd=-1;
   function clearAnim(){
     token++;
     if(raf){ cancelAnimationFrame(raf); raf=null; }
@@ -735,7 +735,8 @@ window.addEventListener('load',()=>map.invalidateSize());
     map.flyToBounds(L.latLngBounds(pts),{padding:[65,65],maxZoom:st.maxZoom,duration:0.7});
     layer=L.polyline([pts[0]],{color:st.color,weight:4,opacity:.95,dashArray:st.dash}).addTo(map);
     mover=L.marker(pts[0],{icon:moverIcon(st, st.emoji+' '+fmtDur(leg.min)),zIndexOffset:3000,interactive:false}).addTo(map);
-    const durMs=Math.max(1600,Math.min(4200,Math.sqrt(leg.min)*360));
+    let durMs=Math.max(1600,Math.min(4200,Math.sqrt(leg.min)*360));
+    if(leg.mode!=='air') durMs+=1000;   // pernas terrestres (táxi/a pé) ~1s mais lentas
     const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+map.distance(pts[i-1],pts[i]));
     const total=cum[cum.length-1]||1; let t0=null;
     function frame(ts){
@@ -753,7 +754,7 @@ window.addEventListener('load',()=>map.invalidateSize());
       setTimeout(function(){                              // 4) a linha some
         if(my!==token){ map.removeLayer(L2); map.removeLayer(M2); return; }
         fadeOut(L2,M2);
-      },700);
+      }, leg.mode==='air'?700:1000);   // terrestres: ~1s com o tempo visível antes do fade
     }
     raf=requestAnimationFrame(frame);
   }
@@ -763,7 +764,10 @@ window.addEventListener('load',()=>map.invalidateSize());
     let x=null, leg=null;
     try{ x=SLOTS[i]; const nome=(x&&x.e&&x.e.nome)||'';
       leg=LEGS.find(function(l){ return nome.indexOf(l.match)>=0; }); }catch(e){}
-    if(!leg){ clearAnim(); return _open(i); }             // sem leg: comportamento normal
+    // direção: só anima AVANÇANDO (ao voltar, sem efeito). ord = índice global (dia×1000 + slot)
+    let advancing=true;
+    try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
+    if(!leg || !advancing){ clearAnim(); return _open(i); }  // sem leg OU voltando: comportamento normal
     map.closePopup();                                     // 1) fecha o popup atual
     playLeg(leg, function(){                              // 2) desenha a linha (objeto+rótulo)
       try{ if(x&&x.e&&x.e.m){ map.flyTo(x.e.m.getLatLng(), Math.max(map.getZoom(), leg.mode==='air'?11:14), {duration:0.55}); x.e.m.openPopup(); } }catch(e){}
