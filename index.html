@@ -668,6 +668,108 @@ applyFilter();
 // corrige tiles ao entrar (container redimensionou p/ a sidebar)
 setTimeout(()=>map.invalidateSize(),150);
 window.addEventListener('load',()=>map.invalidateSize());
+
+/* ============================================================================
+   [TESTE-ANIMACAO-ROTAS] — fecha o popup atual → desenha a linha (com um objeto +
+   rótulo de modo/tempo se movendo) → abre o novo popup → a linha some.
+   Modo define trajeto e tempo: aéreo = arco curvo · táxi/a pé = ruas (OSRM).
+   Escopo do teste: POA→Madri (aéreo) · Barajas→hotel (táxi) · hotel→Plaza Mayor (a pé).
+   Dispara na SELEÇÃO DE HORÁRIO (openSlot). ►►► DESFAZER: apague deste comentário
+   até o "})(); // [/TESTE-ANIMACAO-ROTAS]" mais abaixo. Nada mais depende dele. ◄◄◄
+   ============================================================================ */
+(function(){
+  if (typeof openSlot!=='function') return;
+  const POA=[-29.9939,-51.1714], VCP=[-23.0074,-47.1345], BAR=[40.4936,-3.5668],
+        HOTEL=[40.4249,-3.7066], PZM=[40.4155,-3.7074];
+  // dispara quando a navegação por horário abre o slot de DESTINO (casa por nome)
+  const LEGS = [
+    {match:'Viracopos',  src:POA,   dst:VCP,   mode:'air',  min:100, label:'POA → Viracopos'},
+    {match:'Barajas',    src:VCP,   dst:BAR,   mode:'air',  min:615, label:'Viracopos → Madrid (Barajas)'},
+    {match:'Rías Bajas', src:BAR,   dst:HOTEL, mode:'taxi', min:33,  label:'Barajas → hotel (táxi)'},
+    {match:'Plaza Mayor',src:HOTEL, dst:PZM,   mode:'walk', min:18,  label:'Hotel → Plaza Mayor (a pé)'},
+  ];
+  const STYLE = {
+    air:  {color:'#0d9488', dash:'2,10', emoji:'✈️', maxZoom:6},
+    taxi: {color:'#f59e0b', dash:null,   emoji:'🚕', maxZoom:15},
+    walk: {color:'#2563eb', dash:'1,8',  emoji:'🚶', maxZoom:16},
+    train:{color:'#1f6feb', dash:null,   emoji:'🚆', maxZoom:14},
+  };
+  let layer=null, mover=null, raf=null, banner=null, token=0;
+  function clearAnim(){
+    token++;
+    if(raf){ cancelAnimationFrame(raf); raf=null; }
+    if(layer){ map.removeLayer(layer); layer=null; }
+    if(mover){ map.removeLayer(mover); mover=null; }
+    if(banner){ banner.remove(); banner=null; }
+  }
+  function fmtDur(min){ const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
+  // arco curvo (Bézier quadrático) p/ aéreo — NÃO segue ruas
+  function arc(a,b,n){ n=n||64;
+    const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1], k=0.18;
+    const cx=mx-dy*k, cy=my+dx*k, pts=[];
+    for(let i=0;i<=n;i++){ const t=i/n,u=1-t;
+      pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); }
+    return pts;
+  }
+  // rota por RUAS via OSRM (perfil driving); se falhar, cai p/ linha reta
+  async function streets(a,b){
+    try{
+      const url='https://router.project-osrm.org/route/v1/driving/'+a[1]+','+a[0]+';'+b[1]+','+b[0]+'?overview=full&geometries=geojson';
+      const j=await (await fetch(url)).json();
+      return j.routes[0].geometry.coordinates.map(p=>[p[1],p[0]]);
+    }catch(e){ return [a,b]; }
+  }
+  // objeto que se move na linha, com rótulo (modo + tempo) coladinho nele
+  function moverIcon(st, txt){ return L.divIcon({className:'', iconSize:[0,0], iconAnchor:[0,0],
+    html:'<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px #000);transform:translate(-50%,-50%)">'+st.emoji+'</div>'
+       +'<div style="position:absolute;left:13px;top:-9px;white-space:nowrap;background:'+st.color+';color:#fff;padding:3px 9px;border-radius:11px;font:700 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.45)">'+txt+'</div>'}); }
+  function fadeOut(lyr,mvr){
+    let op=0.95; const iv=setInterval(function(){ op-=0.09;
+      if(op<=0){ clearInterval(iv); if(lyr) map.removeLayer(lyr); if(mvr) map.removeLayer(mvr); }
+      else { if(lyr) lyr.setStyle({opacity:op}); if(mvr&&mvr._icon) mvr._icon.style.opacity=op; } },50);
+  }
+  async function playLeg(leg, openDst){
+    clearAnim(); const my=token, st=STYLE[leg.mode];
+    const pts = leg.mode==='air' ? arc(leg.src,leg.dst) : await streets(leg.src,leg.dst);
+    if(my!==token) return; // navegou p/ outro slot enquanto buscava a rota
+    map.flyToBounds(L.latLngBounds(pts),{padding:[65,65],maxZoom:st.maxZoom,duration:0.7});
+    layer=L.polyline([pts[0]],{color:st.color,weight:4,opacity:.95,dashArray:st.dash}).addTo(map);
+    mover=L.marker(pts[0],{icon:moverIcon(st, st.emoji+' '+fmtDur(leg.min)),zIndexOffset:3000,interactive:false}).addTo(map);
+    const durMs=Math.max(1600,Math.min(4200,Math.sqrt(leg.min)*360));
+    const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+map.distance(pts[i-1],pts[i]));
+    const total=cum[cum.length-1]||1; let t0=null;
+    function frame(ts){
+      if(my!==token) return;
+      if(t0===null) t0=ts;
+      const p=Math.min(1,(ts-t0)/durMs), target=p*total;
+      let i=1; while(i<cum.length && cum[i]<target) i++;
+      const seg=(target-cum[i-1])/((cum[i]-cum[i-1])||1), a=pts[i-1], b=pts[i]||pts[i-1];
+      const cur=[a[0]+(b[0]-a[0])*seg, a[1]+(b[1]-a[1])*seg];
+      mover.setLatLng(cur); layer.setLatLngs(pts.slice(0,i).concat([cur]));
+      if(p<1){ raf=requestAnimationFrame(frame); return; }
+      layer.setLatLngs(pts); mover.setLatLng(pts[pts.length-1]);
+      if(openDst) openDst();                              // 3) chega → abre o novo popup
+      const L2=layer, M2=mover; layer=null; mover=null;   // desanexa (clearAnim não mexe mais neles)
+      setTimeout(function(){                              // 4) a linha some
+        if(my!==token){ map.removeLayer(L2); map.removeLayer(M2); return; }
+        fadeOut(L2,M2);
+      },700);
+    }
+    raf=requestAnimationFrame(frame);
+  }
+  // engancha na SELEÇÃO DE HORÁRIO (openSlot é chamado pelo select e pelas setas)
+  const _open=openSlot;
+  openSlot=function(i){
+    let x=null, leg=null;
+    try{ x=SLOTS[i]; const nome=(x&&x.e&&x.e.nome)||'';
+      leg=LEGS.find(function(l){ return nome.indexOf(l.match)>=0; }); }catch(e){}
+    if(!leg){ clearAnim(); return _open(i); }             // sem leg: comportamento normal
+    map.closePopup();                                     // 1) fecha o popup atual
+    playLeg(leg, function(){                              // 2) desenha a linha (objeto+rótulo)
+      try{ if(x&&x.e&&x.e.m){ map.flyTo(x.e.m.getLatLng(), Math.max(map.getZoom(), leg.mode==='air'?11:14), {duration:0.55}); x.e.m.openPopup(); } }catch(e){}
+    });
+  };
+})(); // [/TESTE-ANIMACAO-ROTAS]
 </script>
 </body>
 </html>
