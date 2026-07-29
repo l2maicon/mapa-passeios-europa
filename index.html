@@ -791,6 +791,9 @@ window.addEventListener('load',()=>map.invalidateSize());
     // direção: só anima AVANÇANDO. ord = índice global (dia×1000 + slot)
     let advancing=true;
     try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
+    // Web Summit (Maicon) nos dias do evento: mostra o pin, mas NÃO anima e NÃO vira "ponto anterior"
+    // → a animação segue só a rota da PAULA (o casal se reencontra à noite).
+    if(bn.indexOf('Web Summit')>=0){ clearAnim(); _open(i); return; }
     const cur={ll:B, type:tb, nome:bn};
     let mode=null;
     if(animOn() && advancing && prev && B && map.distance(prev.ll,B)>60) mode=pickMode(prev.type,tb,prev.ll,B);
