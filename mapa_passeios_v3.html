@@ -766,9 +766,9 @@ function rebuildHoras(){
   sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
 }
 function baseOpenSlot(mk){
-  const ll=mk.getLatLng();
+  const ll=mk.getLatLng();   // wrapper devolve {lat,lng} como números (não funções)
   const z = tilted ? 18.5 : 16;   // chega perto (satélite); tilt fica p/ o Map ID vetorial
-  flyTo({lat:ll.lat(), lng:ll.lng(), zoom:z, tilt:(tilted?45:0), ms:850}, ()=>mk.open());
+  flyTo({lat:ll.lat, lng:ll.lng, zoom:z, tilt:(tilted?45:0), ms:850}, ()=>mk.open());
 }
 function openSlot(i){
   const x=SLOTS[i]; if(!x) return;
