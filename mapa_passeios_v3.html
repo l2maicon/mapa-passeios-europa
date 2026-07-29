@@ -491,6 +491,7 @@ async function initMap(){
     center:{lat:46,lng:3}, zoom:5, mapTypeId:'hybrid',
     mapTypeControl:true, streetViewControl:true, fullscreenControl:true,
     tilt:0, gestureHandling:'greedy', rotateControl:true,
+    isFractionalZoomEnabled:true,   // permite voo de câmera suave (zoom fracionário)
   });
   iw = new google.maps.InfoWindow({maxWidth:300});
   transitLayer = new google.maps.TransitLayer();
@@ -701,8 +702,8 @@ function applyFilter(){
 }
 function boundsFrom(list){ const b=new google.maps.LatLngBounds(); let k=0; list.forEach(ll=>{ b.extend(ll); k++; }); return k?b:null; }
 function fitCapped(b, maxZoom){
-  map.fitBounds(b, 60);
-  google.maps.event.addListenerOnce(map,'idle',()=>{ if(map.getZoom()>maxZoom) map.setZoom(maxZoom); });
+  const z=Math.min(zoomToFit(b,0.16), maxZoom);
+  flyTo({...centerOf(b), zoom:z, tilt:0, ms:700});
 }
 function cityBounds(cid){
   const ll=markers.filter(e=>e.cid===cid && e.m.onMap).map(e=>e.m.getLatLng());
@@ -716,7 +717,7 @@ function focusDayCity(){
   markers.forEach(({m})=>{ if(m.onMap) lls.push(m.getLatLng()); });
   transitMarkers.forEach(({m})=>{ if(m.onMap) lls.push(m.getLatLng()); });
   const b=boundsFrom(lls);
-  if(b) fitCapped(b,13); else { map.setCenter({lat:46,lng:3}); map.setZoom(5); }
+  if(b) fitCapped(b,13); else { jumpCam(46,3,5); }
 }
 function stepDay(delta){
   const cur=_sel.value;
@@ -764,7 +765,11 @@ function rebuildHoras(){
   sel.disabled=false;
   sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
 }
-function baseOpenSlot(mk){ map.panTo(mk.getLatLng()); if(map.getZoom()<13) map.setZoom(13); mk.open(); }
+function baseOpenSlot(mk){
+  const ll=mk.getLatLng();
+  const z = tilted ? 18.5 : 16;   // chega perto (satélite); tilt fica p/ o Map ID vetorial
+  flyTo({lat:ll.lat(), lng:ll.lng(), zoom:z, tilt:(tilted?45:0), ms:850}, ()=>mk.open());
+}
 function openSlot(i){
   const x=SLOTS[i]; if(!x) return;
   const mk=x.e.m; if(!mk.onMap) return;
@@ -832,6 +837,44 @@ function pickMode(ta,tb,A,B){
   return 'train';
 }
 function fmtDur(min){ min=Math.round(min); const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
+/* ---------- câmera cinematográfica (moveCamera + zoom fracionário) ----------
+   Substitui os fitBounds/setZoom instantâneos (que causavam o "pulo" de vários
+   níveis de zoom de uma vez) por um voo suave e interpolado. flyTok cancela um
+   voo quando outro começa (ou quando reseta a vista). */
+let flyTok=0;
+function _ease(t){ return t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+function flyTo(target, done){
+  const my=++flyTok;
+  const c0=map.getCenter(), z0=map.getZoom(), ti0=map.getTilt()||0, h0=map.getHeading()||0;
+  const lat0=c0.lat(), lng0=c0.lng();
+  const z1=(target.zoom!=null?target.zoom:z0);
+  const ti1=(target.tilt!=null?target.tilt:ti0);
+  const h1=(target.heading!=null?target.heading:h0);
+  let dLng=target.lng-lng0; if(dLng>180)dLng-=360; if(dLng<-180)dLng+=360;
+  let dH=h1-h0; if(dH>180)dH-=360; if(dH<-180)dH+=360;
+  const ms=Math.max(1,target.ms||800), t0=performance.now();
+  (function step(now){
+    if(my!==flyTok) return;                 // superado por outro voo
+    const p=Math.min(1,(now-t0)/ms), e=_ease(p);
+    map.moveCamera({ center:{lat:lat0+(target.lat-lat0)*e, lng:lng0+dLng*e},
+      zoom:z0+(z1-z0)*e, tilt:ti0+(ti1-ti0)*e, heading:h0+dH*e });
+    if(p<1) requestAnimationFrame(step); else if(done) done();
+  })(t0);
+}
+function jumpCam(lat,lng,z){ flyTok++; map.moveCamera({center:{lat,lng},zoom:z,tilt:0,heading:0}); }
+function centerOf(b){ const c=b.getCenter(); return {lat:c.lat(), lng:c.lng()}; }
+// zoom que enquadra um bounds SEM depender do fitBounds assíncrono (evita o snap)
+function zoomToFit(b, padFrac){
+  const div=document.getElementById('map'); if(!div||!div.clientWidth) return 12;
+  const WORLD=256, pad=(padFrac==null?0.20:padFrac);
+  const ne=b.getNorthEast(), sw=b.getSouthWest();
+  const latR=x=>{ const s=Math.min(Math.max(Math.sin(x*Math.PI/180),-.9999),.9999); return Math.log((1+s)/(1-s))/2; };
+  const W=Math.max(50,div.clientWidth*(1-pad)), H=Math.max(50,div.clientHeight*(1-pad));
+  const latFrac=Math.abs(latR(ne.lat())-latR(sw.lat()))/Math.PI;
+  let lngDiff=ne.lng()-sw.lng(); if(lngDiff<0)lngDiff+=360; const lngFrac=lngDiff/360;
+  const zc=(px,frac)=>Math.log2(px/WORLD/Math.max(frac,1e-9));
+  return Math.max(2, Math.min(20, Math.min(zc(H,latFrac), zc(W,lngFrac))));
+}
 function ensureLine(){
   if(routeLine) return;
   routeLine=new google.maps.Polyline({map, path:[], strokeColor:'#7c3aed', strokeOpacity:.95, strokeWeight:4, zIndex:5, clickable:false});
@@ -880,12 +923,12 @@ function drawAnim(A,B,mode,pts,km,min,openDst,my){
   if(my!==animToken) return;
   const st=AST[mode], air=(mode==='air');
   styleLine(mode);
-  try{ const b=new google.maps.LatLngBounds(); pts.forEach(p=>b.extend(toLL(p))); fitCapped(b, st.mz); }catch(e){}
   const txt=st.e+' '+(km<10?km.toFixed(1):Math.round(km))+' km · ~'+fmtDur(min);
   animMover=makeMover(pts[0], st, txt);
+  setLinePts([pts[0]]);
   const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+haversine(pts[i-1],pts[i]));
   const total=cum[cum.length-1]||1;
-  let durMs=Math.max(1600,Math.min(4200,Math.sqrt(km+3)*430)); if(!air) durMs+=800;
+  let durMs=Math.max(1600,Math.min(4200,Math.sqrt(km+3)*430)); if(!air) durMs+=400;
   let t0=null;
   function frame(ts){
     if(my!==animToken) return;
@@ -901,7 +944,10 @@ function drawAnim(A,B,mode,pts,km,min,openDst,my){
     if(openDst) openDst();
     setTimeout(()=>{ if(my===animToken){ if(animMover){animMover.setMap(null);animMover=null;} if(routeLine){routeLine.setPath([]);routeLine.setOptions({icons:[]});} } }, 3500);
   }
-  setTimeout(()=>{ if(my===animToken) requestAnimationFrame(frame); }, air?0:800);
+  // 1) voa suave p/ enquadrar a rota (sem tilt) — 2) só então cresce a linha. Sem snap.
+  const b=new google.maps.LatLngBounds(); pts.forEach(p=>b.extend(toLL(p)));
+  const fitZ=Math.min(zoomToFit(b,0.24), st.mz);
+  flyTo({...centerOf(b), zoom:fitZ, tilt:0, ms:700}, ()=>{ if(my===animToken) requestAnimationFrame(frame); });
 }
 function animate(A,B,mode,openDst){
   clearAnim(); const my=animToken, st=AST[mode];
@@ -920,7 +966,7 @@ function animate(A,B,mode,openDst){
 function showCityBtn(c,r){ return (c!=='marselha'||r==='marselha'); }
 function onRotaChange(){ const r=curRota();
   document.querySelectorAll('.city[data-c]').forEach(b=>{ const c=b.dataset.c; b.style.display=(c==='all'||showCityBtn(c,r))?'':'none'; });
-  document.getElementById('f_dia').value='all'; applyFilter(); rebuildHoras(); map.setCenter({lat:46,lng:3}); map.setZoom(5);
+  document.getElementById('f_dia').value='all'; applyFilter(); rebuildHoras(); jumpCam(46,3,5);
   prevAnim=null; lastOrd=-1; clearAnim();
 }
 
@@ -943,9 +989,9 @@ function buildControls(){
   document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter();rebuildHoras();};
   document.querySelectorAll('.city[data-c]').forEach(b=>b.onclick=()=>{
     const c=b.dataset.c;
-    if(c==='all'){ map.setCenter({lat:46,lng:3}); map.setZoom(5); return; }
+    if(c==='all'){ jumpCam(46,3,5); return; }
     const bb=cityBounds(c);
-    if(bb) fitCapped(bb,13); else { const v=VIEWS[c]; map.setCenter({lat:v[0],lng:v[1]}); map.setZoom(v[2]); }
+    if(bb) fitCapped(bb,14); else { const v=VIEWS[c]; flyTo({lat:v[0],lng:v[1],zoom:v[2],tilt:0,ms:700}); }
   });
   // camadas
   document.getElementById('f_sat').addEventListener('change',e=>{ map.setMapTypeId(e.target.checked?'hybrid':'roadmap'); });
@@ -954,13 +1000,12 @@ function buildControls(){
   // 45°: no mapa raster o tilt só existe nas imagens aéreas (satélite/híbrido) em zoom alto.
   document.getElementById('f_tilt').addEventListener('change',e=>{
     tilted=e.target.checked;
+    const c=map.getCenter();
     if(tilted){
-      const sat=document.getElementById('f_sat'); if(sat && !sat.checked){ sat.checked=true; }
-      map.setMapTypeId('hybrid');
-      if(map.getZoom()<18) map.setZoom(18);
-      map.setTilt(45);
+      const sat=document.getElementById('f_sat'); if(sat && !sat.checked){ sat.checked=true; map.setMapTypeId('hybrid'); }
+      flyTo({lat:c.lat(), lng:c.lng(), zoom:Math.max(map.getZoom(),18), tilt:45, ms:700});
     } else {
-      map.setTilt(0); map.setHeading(0);
+      flyTo({lat:c.lat(), lng:c.lng(), tilt:0, heading:0, ms:450});
     }
   });
 }
