@@ -736,9 +736,12 @@ document.getElementById('f_terr').addEventListener('change', function(){
 });
 
 /* ============================================================================
-   ANIMAÇÃO DE TRAJETO (opcional) — arcos entre pontos consecutivos ao AVANÇAR
-   no horário, se "🎬 habilitar animação" (#f_anim) estiver marcado. Sem OSRM
-   (mantido leve p/ o beta): todos os modos usam arco great-circle aproximado.
+   ANIMAÇÃO DE TRAJETO (opcional) — trajeto entre pontos consecutivos ao AVANÇAR
+   no horário, se "🎬 habilitar animação" (#f_anim) estiver marcado.
+   • 🚕 táxi e 🚶 a pé → seguem as RUAS de verdade (roteamento OSRM da
+     routing.openstreetmap.de: perfil foot p/ pedestre, car p/ táxi); km/tempo
+     REAIS vindos de routes[0].distance / .duration. Falha de rede → linha reta.
+   • ✈️ aéreo, 🚆 trem, 🚇 metrô → arco great-circle aproximado (como antes).
    ============================================================================ */
 const AST={
   air:  {c:'#0d9488', e:'✈️', kmh:750, curv:.18, mz:6},
@@ -784,10 +787,21 @@ function clearAnim(){ animToken++;
   if(animMover){ animMover.remove(); animMover=null; }
   setRoute([]);
 }
-function animate(A,B,mode,openDst){
-  clearAnim(); const my=animToken, st=AST[mode];
-  const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60;
-  const air=(mode==='air');
+// roteamento REAL de rua (só táxi e a pé). Devolve Promise<{pts,km,min}|null>.
+function fetchRoute(mode,A,B){
+  const prof = mode==='walk' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
+  const url = `https://routing.openstreetmap.de/${prof}/${A[0]},${A[1]};${B[0]},${B[1]}?overview=full&geometries=geojson`;
+  return fetch(url).then(r=>r.ok?r.json():null).then(j=>{
+    const rt = j && j.routes && j.routes[0];
+    const co = rt && rt.geometry && rt.geometry.coordinates;
+    if(co && co.length>1) return {pts:co, km:rt.distance/1000, min:rt.duration/60, real:true};
+    return null;
+  }).catch(()=>null);
+}
+// núcleo da animação: recebe os pontos (rua ou arco) + km/min já calculados
+function drawAnim(A,B,mode,pts,km,min,openDst,my){
+  if(my!==animToken) return;
+  const st=AST[mode], air=(mode==='air');
   try{ map.setPaintProperty('route','line-color',st.c);
        map.setPaintProperty('route','line-dasharray', air?[2,2]:[1,0]); }catch(e){}
   try{ map.fitBounds(boundsFrom(pts),{padding:70, maxZoom:st.mz, pitch:Math.max(map.getPitch(),40), bearing:map.getBearing(), duration:600}); }catch(e){}
@@ -812,6 +826,20 @@ function animate(A,B,mode,openDst){
     setTimeout(()=>{ if(my===animToken){ if(animMover){animMover.remove();animMover=null;} setRoute([]); } }, 3500);
   }
   setTimeout(()=>{ if(my===animToken) requestAnimationFrame(frame); }, air?0:800);
+}
+function animate(A,B,mode,openDst){
+  clearAnim(); const my=animToken, st=AST[mode];
+  const fallback=()=>{ const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60; drawAnim(A,B,mode,pts,km,min,openDst,my); };
+  if(mode==='taxi'||mode==='walk'){
+    // táxi e a pé: geometria REAL de rua; km/tempo reais; cai p/ linha reta se falhar
+    fetchRoute(mode,A,B).then(res=>{
+      if(my!==animToken) return;
+      if(res) drawAnim(A,B,mode,res.pts,res.km,res.min,openDst,my);
+      else fallback();
+    });
+    return;
+  }
+  fallback();
 }
 function openSlot(i){
   let x=null, B=null, tb='poi', rec=null;
