@@ -711,7 +711,29 @@ window.addEventListener('load',()=>map.invalidateSize());
   };
   // dicas de linha/estação p/ trechos de metrô documentados (chave "nomeOrigem→nomeDestino")
   const METRO_HINTS = {
+    // ===== Madrid =====
     'Primark - Salamanca (Conde de Peñalver)→El Corte Inglés':'L2 🔴 Goya → Sol',
+    'El Corte Inglés→Primark - Salamanca (Conde de Peñalver)':'L2 🔴 Sol → Goya',
+    'La Latina→Museo Sorolla':'L5 🟢 La Latina → Rubén Darío',
+    'Museo Sorolla→La Latina':'L5 🟢 Rubén Darío → La Latina',
+    'Museo Thyssen-Bornemisza→Catedral de la Almudena':'L2 🔴 Banco de España → Ópera',
+    'Catedral de la Almudena→Museo Thyssen-Bornemisza':'L2 🔴 Ópera → Banco de España',
+    // ===== Barcelona =====
+    'La Pedrera / Casa Milà→Tapas + vermut (Carrer Blai)':'L3 🟢 Diagonal → Poble Sec',
+    'Tapas + vermut (Carrer Blai)→La Pedrera / Casa Milà':'L3 🟢 Poble Sec → Diagonal',
+    'Praia de Barceloneta→Barri Gòtic (Catedral)':'L4 🟡 Barceloneta → Jaume I',
+    'Barri Gòtic (Catedral)→Praia de Barceloneta':'L4 🟡 Jaume I → Barceloneta',
+    'Palau de la Música→MNAC (Palau Nacional)':'L1 🔴 Urquinaona → Espanya',
+    'MNAC (Palau Nacional)→Palau de la Música':'L1 🔴 Espanya → Urquinaona',
+    // ===== Paris =====
+    'Champs-Élysées→Marais (Place des Vosges)':'M1 🟡 Franklin D. Roosevelt → Saint-Paul',
+    'Marais (Place des Vosges)→Champs-Élysées':'M1 🟡 Saint-Paul → Franklin D. Roosevelt',
+    'Louvre→Opéra Garnier':'M7 🩷 Palais Royal → Opéra',
+    'Opéra Garnier→Louvre':'M7 🩷 Opéra → Palais Royal',
+    'Opéra Garnier→Piquenique no Champ de Mars':'M8 🟣 Opéra → École Militaire',
+    'Piquenique no Champ de Mars→Opéra Garnier':'M8 🟣 École Militaire → Opéra',
+    'Montmartre + Sacré-Cœur→Musée d’Orsay':'M12 🟢 Abbesses → Solférino',
+    'Musée d’Orsay→Montmartre + Sacré-Cœur':'M12 🟢 Solférino → Abbesses',
   };
   let layer=null, mover=null, raf=null, token=0, lastOrd=-1, prev=null; // prev={ll:[lat,lng], type}
   function clearAnim(){ token++;
