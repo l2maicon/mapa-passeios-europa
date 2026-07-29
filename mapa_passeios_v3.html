@@ -459,20 +459,21 @@ const PLACEID = JSON.parse(localStorage.getItem('v3_placeids')||'{}');
 function savePlaceIds(){ try{ localStorage.setItem('v3_placeids', JSON.stringify(PLACEID)); }catch(e){} }
 window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID; };
 
-let map, iw, AdvancedMarkerElement, PlaceLib, spherical;
+let map, iw, PlaceLib, spherical;
 let transitLayer, trafficLayer, tilted=false;
 
 async function initMap(){
   const core = await google.maps.importLibrary('maps');
-  const markerLib = await google.maps.importLibrary('marker');
   const geomLib = await google.maps.importLibrary('geometry');
   try{ PlaceLib = await google.maps.importLibrary('places'); }catch(e){ console.warn('Places lib falhou:', e); }
-  AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
   spherical = geomLib.spherical;
+  // NB: base RASTER (sem mapId vetorial). O DEMO_MAP_ID vetorial não renderiza neste
+  // projeto (fica UNINITIALIZED/cinza) — p/ 3D vetorial + AdvancedMarkers seria preciso
+  // criar um Map ID vetorial próprio no Google Cloud. Raster renderiza sempre.
   map = new core.Map(document.getElementById('map'), {
-    center:{lat:46,lng:3}, zoom:5, mapId:'DEMO_MAP_ID',
+    center:{lat:46,lng:3}, zoom:5, mapTypeId:'roadmap',
     mapTypeControl:true, streetViewControl:true, fullscreenControl:true,
-    tilt:0, gestureHandling:'greedy',
+    tilt:0, gestureHandling:'greedy', rotateControl:true,
   });
   iw = new google.maps.InfoWindow({maxWidth:360});
   transitLayer = new google.maps.TransitLayer();
@@ -485,23 +486,22 @@ async function initMap(){
 }
 window.initMap = initMap;
 
-/* ---------- marcadores ---------- */
-function dotEl(color){
-  const d=document.createElement('div');
-  d.style.cssText='width:16px;height:16px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 0 0 1.5px #666;cursor:pointer';
-  return d;
+/* ---------- marcadores (classic google.maps.Marker — funciona sem mapId) ---------- */
+function poiIcon(color){
+  return {path:google.maps.SymbolPath.CIRCLE, fillColor:color, fillOpacity:1, strokeColor:'#fff', strokeWeight:2, scale:7};
 }
-function pinEl(emoji,bg){
-  const d=document.createElement('div');
-  d.style.cssText='width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;background:'+bg+';border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1.5px #444,0 1px 3px rgba(0,0,0,.45);cursor:pointer';
-  d.textContent=emoji; return d;
+function svgPin(emoji,bg){
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30">'
+    +'<rect x="2" y="2" width="26" height="26" rx="7" fill="'+bg+'" stroke="#fff" stroke-width="2"/>'
+    +'<text x="15" y="21" font-size="15" text-anchor="middle">'+emoji+'</text></svg>';
+  return {url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg), scaledSize:new google.maps.Size(30,30), anchor:new google.maps.Point(15,15)};
 }
 // wrapper uniforme p/ imitar a interface do 2D (map.hasLayer/getLatLng/openPopup)
 function wrap(marker, lat, lng, onOpen){
   return {
     marker, position:{lat,lng},
-    get onMap(){ return marker.map!=null; },
-    show(v){ marker.map = v?map:null; },
+    get onMap(){ return marker.getMap()!=null; },
+    show(v){ marker.setMap(v?map:null); },
     getLatLng(){ return this.position; },
     open(){ if(onOpen) onOpen(); },
   };
@@ -515,8 +515,7 @@ function buildMarkers(){
     const s = SRC[cid]||{};
     const q = term(nome, cid);
     const cat = CAT[cid+'|'+nome]; const cm = CATMETA[cat];
-    const el = dotEl(PRI[pri].color);
-    const marker = new AdvancedMarkerElement({map:null, position:{lat,lng}, content:el, title:nome, gmpClickable:true});
+    const marker = new google.maps.Marker({map:null, position:{lat,lng}, icon:poiIcon(PRI[pri].color), title:nome, zIndex:1000});
     const entry = {marker, pri, cat, cid, nome, nota, q, lat, lng, s, cm};
     const w = wrap(marker, lat, lng, ()=>openPOI(entry));
     entry.w = w;
@@ -526,7 +525,7 @@ function buildMarkers(){
   // estações + aeroportos
   const stationEntries = STATIONS.map(([lat,lng,nome,d,h,txt])=>{
     const min=parseHora(h);
-    const marker=new AdvancedMarkerElement({map:null, position:{lat,lng}, content:pinEl('🚆','#1f6feb'), title:'🚆 '+nome, gmpClickable:true});
+    const marker=new google.maps.Marker({map:null, position:{lat,lng}, icon:svgPin('🚆','#1f6feb'), title:'🚆 '+nome, zIndex:100});
     const w=wrap(marker,lat,lng,null);
     const html=`<div class="gmw"><div class="pribar" style="background:#1f6feb">🚆 Estação · reserva confirmada</div><b>${nome}</b><br>`
       +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
@@ -538,7 +537,7 @@ function buildMarkers(){
   });
   const airportEntries = AIRPORTS.map(([lat,lng,nome,d,h,txt])=>{
     const min=parseHora(h);
-    const marker=new AdvancedMarkerElement({map:null, position:{lat,lng}, content:pinEl('✈️','#0d9488'), title:'✈️ '+nome, gmpClickable:true});
+    const marker=new google.maps.Marker({map:null, position:{lat,lng}, icon:svgPin('✈️','#0d9488'), title:'✈️ '+nome, zIndex:100});
     const w=wrap(marker,lat,lng,null);
     const html=`<div class="gmw"><div class="pribar" style="background:#0d9488">✈️ Aeroporto · voo comprado</div><b>${nome}</b><br>`
       +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
@@ -551,7 +550,7 @@ function buildMarkers(){
   transitMarkers = stationEntries.concat(airportEntries);
   // hotéis (fixos)
   hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt,arr,drop,checkout,ret])=>{
-    const marker=new AdvancedMarkerElement({map, position:{lat,lng}, content:pinEl('🏨','#8957e5'), title:'🏨 '+nome, gmpClickable:true});
+    const marker=new google.maps.Marker({map, position:{lat,lng}, icon:svgPin('🏨','#8957e5'), title:'🏨 '+nome, zIndex:200});
     const w=wrap(marker,lat,lng,null);
     const gm=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     const html=`<div class="gmw"><div class="pribar" style="background:#8957e5">🏨 Hotel reservado</div><b>${nome}</b><br>`
@@ -776,14 +775,20 @@ function buildControls(){
   document.getElementById('f_sat').addEventListener('change',e=>{ map.setMapTypeId(e.target.checked?'hybrid':'roadmap'); });
   document.getElementById('f_transit').addEventListener('change',e=>{ transitLayer.setMap(e.target.checked?map:null); });
   document.getElementById('f_traffic').addEventListener('change',e=>{ trafficLayer.setMap(e.target.checked?map:null); });
+  // 45°: no mapa raster o tilt só existe nas imagens aéreas (satélite/híbrido) em zoom alto.
   document.getElementById('f_tilt').addEventListener('change',e=>{
     tilted=e.target.checked;
-    if(map.getZoom()<15) map.setZoom(16);
-    map.setTilt(tilted?45:0);
-    if(tilted) map.setHeading(30); else map.setHeading(0);
+    if(tilted){
+      const sat=document.getElementById('f_sat'); if(sat && !sat.checked){ sat.checked=true; }
+      map.setMapTypeId('hybrid');
+      if(map.getZoom()<18) map.setZoom(18);
+      map.setTilt(45);
+    } else {
+      map.setTilt(0); map.setHeading(0);
+    }
   });
 }
 </script>
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBvinWem9qmgFEa-VbIN73kLcoW3GD6-J4&libraries=places,marker,geometry&v=weekly&language=pt-BR&loading=async&callback=initMap"></script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBvinWem9qmgFEa-VbIN73kLcoW3GD6-J4&libraries=places,geometry&v=weekly&language=pt-BR&loading=async&callback=initMap"></script>
 </body>
 </html>
