@@ -82,6 +82,9 @@
       <button class="city" id="hora_next" title="Próximo horário" style="padding:6px 11px">▶</button>
     </div>
     <span class="hint">só horários com item · abre o modal · setas viram o dia</span>
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin-top:7px;font-size:12.5px">
+      <input type="checkbox" id="f_anim" checked style="cursor:pointer;width:15px;height:15px"> 🎬 habilitar animação
+    </label>
   </div>
   <div class="grp">
     <b>🏷️ Categoria</b>
@@ -670,55 +673,51 @@ setTimeout(()=>map.invalidateSize(),150);
 window.addEventListener('load',()=>map.invalidateSize());
 
 /* ============================================================================
-   [TESTE-ANIMACAO-ROTAS] — fecha o popup atual → desenha a linha (com um objeto +
-   rótulo de modo/tempo se movendo) → abre o novo popup → a linha some.
-   Modo define trajeto e tempo: aéreo = arco curvo · táxi/a pé = ruas (OSRM).
-   Escopo do teste: POA→Madri (aéreo) · Barajas→hotel (táxi) · hotel→Plaza Mayor (a pé).
-   Dispara na SELEÇÃO DE HORÁRIO (openSlot). ►►► DESFAZER: apague deste comentário
-   até o "})(); // [/TESTE-ANIMACAO-ROTAS]" mais abaixo. Nada mais depende dele. ◄◄◄
+   ANIMAÇÃO DE TRAJETO (feature). Ao AVANÇAR na seleção de horário, anima o trajeto do
+   ponto anterior para o novo — se o checkbox "🎬 habilitar animação" (#f_anim) estiver
+   marcado. Modo (inferido dos pontos) define trajeto e tempo: aéreo=arco · trem=curva ·
+   táxi=ruas (OSRM driving) · a pé=ruas de pedestre (OSRM foot). Fluxo: fecha o popup atual →
+   mostra a linha com um objeto+rótulo (modo/KM/tempo) se movendo → abre o novo popup → a
+   linha some. KM aparece no início; modos terrestres têm um respiro (~1s) pra ler + ~1s de
+   tempo visível no fim. Só anima avançando (voltar não anima).
+   ►►► DESFAZER: apague deste comentário até "})(); // [/ANIMACAO-ROTAS]" (+ o checkbox #f_anim no HTML). ◄◄◄
    ============================================================================ */
 (function(){
   if (typeof openSlot!=='function') return;
-  const POA=[-29.9939,-51.1714], VCP=[-23.0074,-47.1345], BAR=[40.4936,-3.5668],
-        HOTEL=[40.4249,-3.7066], PZM=[40.4155,-3.7074];
-  // dispara quando a navegação por horário abre o slot de DESTINO (casa por nome)
-  const LEGS = [
-    {match:'Viracopos',  src:POA,   dst:VCP,   mode:'air',  min:100, label:'POA → Viracopos'},
-    {match:'Barajas',    src:VCP,   dst:BAR,   mode:'air',  min:615, label:'Viracopos → Madrid (Barajas)'},
-    {match:'Rías Bajas', src:BAR,   dst:HOTEL, mode:'taxi', min:33,  label:'Barajas → hotel (táxi)'},
-    {match:'Plaza Mayor',src:HOTEL, dst:PZM,   mode:'walk', min:18,  label:'Hotel → Plaza Mayor (a pé)'},
-  ];
+  const animOn=function(){ const c=document.getElementById('f_anim'); return !c || c.checked; };
   const STYLE = {
-    air:  {color:'#0d9488', dash:'2,10', emoji:'✈️', maxZoom:6},
-    taxi: {color:'#f59e0b', dash:null,   emoji:'🚕', maxZoom:15},
-    walk: {color:'#2563eb', dash:'1,8',  emoji:'🚶', maxZoom:16},
-    train:{color:'#1f6feb', dash:null,   emoji:'🚆', maxZoom:14},
+    air:  {color:'#0d9488', dash:'3,10', emoji:'✈️', maxZoom:6,  kmh:750, kind:'arc',  curv:0.18},
+    train:{color:'#7c3aed', dash:null,   emoji:'🚆', maxZoom:8,  kmh:150, kind:'arc',  curv:0.07},
+    taxi: {color:'#f59e0b', dash:null,   emoji:'🚕', maxZoom:15, kmh:0,   kind:'osrm', prof:'driving'},
+    walk: {color:'#16a34a', dash:'1,9',  emoji:'🚶', maxZoom:16, kmh:0,   kind:'osrm', prof:'foot'},
   };
-  let layer=null, mover=null, raf=null, banner=null, token=0, lastOrd=-1;
-  function clearAnim(){
-    token++;
+  let layer=null, mover=null, raf=null, token=0, lastOrd=-1, prev=null; // prev={ll:[lat,lng], type}
+  function clearAnim(){ token++;
     if(raf){ cancelAnimationFrame(raf); raf=null; }
     if(layer){ map.removeLayer(layer); layer=null; }
     if(mover){ map.removeLayer(mover); mover=null; }
-    if(banner){ banner.remove(); banner=null; }
   }
-  function fmtDur(min){ const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
-  // arco curvo (Bézier quadrático) p/ aéreo — NÃO segue ruas
-  function arc(a,b,n){ n=n||64;
-    const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1], k=0.18;
-    const cx=mx-dy*k, cy=my+dx*k, pts=[];
-    for(let i=0;i<=n;i++){ const t=i/n,u=1-t;
-      pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); }
-    return pts;
+  function fmtDur(min){ min=Math.round(min); const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
+  function typeOf(nome){ if(nome.indexOf('✈️')>=0) return 'air'; if(nome.indexOf('🚆')>=0) return 'train'; return 'poi'; }
+  function pickMode(ta,tb,A,B){                            // infere o modo de deslocamento entre 2 pontos
+    if(ta==='air'&&tb==='air') return 'air';
+    if(ta==='air'||tb==='air') return 'taxi';             // transfer de/para aeroporto
+    if(ta==='train'&&tb==='train') return 'train';
+    const d=map.distance(A,B);
+    if(d>=120000) return 'train';                         // longa distância terrestre → trem
+    if(d<=2200) return 'walk';
+    return 'taxi';
   }
-  // rota por RUAS via OSRM (perfil driving); se falhar, cai p/ linha reta
-  async function streets(a,b){
-    try{
-      const url='https://router.project-osrm.org/route/v1/driving/'+a[1]+','+a[0]+';'+b[1]+','+b[0]+'?overview=full&geometries=geojson';
-      const j=await (await fetch(url)).json();
-      return j.routes[0].geometry.coordinates.map(p=>[p[1],p[0]]);
-    }catch(e){ return [a,b]; }
-  }
+  // arco curvo (Bézier quadrático) — aéreo e trem (NÃO seguem ruas). k = curvatura
+  function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1],
+    cx=mx-dy*k, cy=my+dx*k, pts=[];
+    for(let i=0;i<=n;i++){ const t=i/n,u=1-t; pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); } return pts; }
+  // rotas reais por RUA via OSRM (driving = táxi · foot = a pé); devolve pts + tempo + km reais
+  async function osrm(a,b,prof){ try{
+      const url='https://router.project-osrm.org/route/v1/'+prof+'/'+a[1]+','+a[0]+';'+b[1]+','+b[0]+'?overview=full&geometries=geojson';
+      const r=(await (await fetch(url)).json()).routes[0];
+      return {pts:r.geometry.coordinates.map(p=>[p[1],p[0]]), min:r.duration/60, km:r.distance/1000};
+    }catch(e){ return {pts:[a,b], min:null, km:null}; } }
   // objeto que se move na linha, com rótulo (modo + tempo) coladinho nele
   function moverIcon(st, txt){ return L.divIcon({className:'', iconSize:[0,0], iconAnchor:[0,0],
     html:'<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px #000);transform:translate(-50%,-50%)">'+st.emoji+'</div>'
@@ -728,15 +727,17 @@ window.addEventListener('load',()=>map.invalidateSize());
       if(op<=0){ clearInterval(iv); if(lyr) map.removeLayer(lyr); if(mvr) map.removeLayer(mvr); }
       else { if(lyr) lyr.setStyle({opacity:op}); if(mvr&&mvr._icon) mvr._icon.style.opacity=op; } },50);
   }
-  async function playLeg(leg, openDst){
-    clearAnim(); const my=token, st=STYLE[leg.mode];
-    const pts = leg.mode==='air' ? arc(leg.src,leg.dst) : await streets(leg.src,leg.dst);
-    if(my!==token) return; // navegou p/ outro slot enquanto buscava a rota
-    map.flyToBounds(L.latLngBounds(pts),{padding:[65,65],maxZoom:st.maxZoom,duration:0.7});
+  async function animate(A,B,mode,openDst){
+    clearAnim(); const my=token, st=STYLE[mode], air=(mode==='air'); let pts,min,km;
+    if(st.kind==='osrm'){ const r=await osrm(A,B,st.prof); if(my!==token) return; pts=r.pts; min=r.min; km=r.km; }
+    else { pts=arc(A,B,st.curv); }
+    if(km==null) km=map.distance(A,B)/1000;               // arco: distância direta (great-circle)
+    if(min==null && st.kmh) min=km/st.kmh*60;             // arco: tempo estimado pela velocidade média
+    map.flyToBounds(L.latLngBounds(pts),{padding:[62,62],maxZoom:st.maxZoom,duration:0.6});
+    const txt=st.emoji+' '+(km<10?km.toFixed(1):Math.round(km))+' km'+(min!=null?' · '+(st.kind==='arc'?'~':'')+fmtDur(min):'');
     layer=L.polyline([pts[0]],{color:st.color,weight:4,opacity:.95,dashArray:st.dash}).addTo(map);
-    mover=L.marker(pts[0],{icon:moverIcon(st, st.emoji+' '+fmtDur(leg.min)),zIndexOffset:3000,interactive:false}).addTo(map);
-    let durMs=Math.max(1600,Math.min(4200,Math.sqrt(leg.min)*360));
-    if(leg.mode!=='air') durMs+=1000;   // pernas terrestres (táxi/a pé) ~1s mais lentas
+    mover=L.marker(pts[0],{icon:moverIcon(st,txt),zIndexOffset:3000,interactive:false}).addTo(map);
+    let durMs=Math.max(1600,Math.min(4200,Math.sqrt(km+3)*430)); if(!air) durMs+=1000; // terrestres ~1s mais lentas
     const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+map.distance(pts[i-1],pts[i]));
     const total=cum[cum.length-1]||1; let t0=null;
     function frame(ts){
@@ -750,30 +751,31 @@ window.addEventListener('load',()=>map.invalidateSize());
       if(p<1){ raf=requestAnimationFrame(frame); return; }
       layer.setLatLngs(pts); mover.setLatLng(pts[pts.length-1]);
       if(openDst) openDst();                              // 3) chega → abre o novo popup
-      const L2=layer, M2=mover; layer=null; mover=null;   // desanexa (clearAnim não mexe mais neles)
-      setTimeout(function(){                              // 4) a linha some
-        if(my!==token){ map.removeLayer(L2); map.removeLayer(M2); return; }
-        fadeOut(L2,M2);
-      }, leg.mode==='air'?700:1000);   // terrestres: ~1s com o tempo visível antes do fade
+      const L2=layer, M2=mover; layer=null; mover=null;
+      setTimeout(function(){ if(my!==token){ map.removeLayer(L2); map.removeLayer(M2); return; } fadeOut(L2,M2); }, air?700:1000);
     }
-    raf=requestAnimationFrame(frame);
+    // KM já visível no início; nos modos terrestres, um respiro (~0,9s) pra ler antes de andar
+    setTimeout(function(){ if(my===token) raf=requestAnimationFrame(frame); }, air?0:900);
   }
   // engancha na SELEÇÃO DE HORÁRIO (openSlot é chamado pelo select e pelas setas)
   const _open=openSlot;
   openSlot=function(i){
-    let x=null, leg=null;
-    try{ x=SLOTS[i]; const nome=(x&&x.e&&x.e.nome)||'';
-      leg=LEGS.find(function(l){ return nome.indexOf(l.match)>=0; }); }catch(e){}
-    // direção: só anima AVANÇANDO (ao voltar, sem efeito). ord = índice global (dia×1000 + slot)
+    let x=null, B=null, tb='poi';
+    try{ x=SLOTS[i]; if(x&&x.e&&x.e.m){ const ll=x.e.m.getLatLng(); B=[ll.lat,ll.lng]; } tb=typeOf((x&&x.e&&x.e.nome)||''); }catch(e){}
+    // direção: só anima AVANÇANDO. ord = índice global (dia×1000 + slot)
     let advancing=true;
     try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
-    if(!leg || !advancing){ clearAnim(); return _open(i); }  // sem leg OU voltando: comportamento normal
-    map.closePopup();                                     // 1) fecha o popup atual
-    playLeg(leg, function(){                              // 2) desenha a linha (objeto+rótulo)
-      try{ if(x&&x.e&&x.e.m){ map.flyTo(x.e.m.getLatLng(), Math.max(map.getZoom(), leg.mode==='air'?11:14), {duration:0.55}); x.e.m.openPopup(); } }catch(e){}
+    const cur={ll:B, type:tb};
+    let mode=null;
+    if(animOn() && advancing && prev && B && map.distance(prev.ll,B)>60) mode=pickMode(prev.type,tb,prev.ll,B);
+    if(!mode){ clearAnim(); _open(i); prev=cur; return; }  // desativado / voltando / 1º ponto: normal
+    map.closePopup();                                      // 1) fecha o popup atual
+    animate(prev.ll, B, mode, function(){                 // 2) desenha a linha (objeto+rótulo)
+      try{ if(x&&x.e&&x.e.m){ map.flyTo(x.e.m.getLatLng(), Math.max(map.getZoom(), (mode==='air'||mode==='train')?11:14), {duration:0.5}); x.e.m.openPopup(); } }catch(e){}
     });
+    prev=cur;
   };
-})(); // [/TESTE-ANIMACAO-ROTAS]
+})(); // [/ANIMACAO-ROTAS]
 </script>
 </body>
 </html>
