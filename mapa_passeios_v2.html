@@ -1,25 +1,835 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mapa 3D (beta) — POA→Europa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa 3D (beta) 🧊 — POA→Europa</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css"/>
 <style>
-  html,body{margin:0;height:100%;background:#0f172a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif}
-  .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
-  h1{font-size:22px;margin:0 0 6px}
-  p{max-width:520px;line-height:1.5;color:#94a3b8}
-  a.btn{margin-top:18px;background:#7c3aed;color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;text-decoration:none}
-  .tag{background:#7c3aed;color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:20px}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #map{position:absolute;top:0;bottom:0;left:232px;right:0}
+  header{position:absolute;top:0;bottom:0;left:0;width:232px;box-sizing:border-box;overflow-y:auto;
+    background:#1b1b2f;color:#fff;z-index:1000;padding:12px 10px;display:flex;flex-direction:column;gap:14px}
+  .ttl{font-size:15px;font-weight:700;line-height:1.2}
+  .beta{display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;
+    border-radius:9px;letter-spacing:.06em;vertical-align:middle;margin-left:5px}
+  .grp{display:flex;flex-direction:column;gap:6px}
+  .grp>b{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
+  .cities{display:flex;flex-wrap:wrap;gap:6px}
+  .hint{font-size:11px;opacity:.65;line-height:1.3}
+  #count{font-size:12px;opacity:.9;margin-top:auto;padding-top:8px;border-top:1px solid #ffffff22;white-space:nowrap}
+  select{max-width:100%}
+  @media(max-width:620px){
+    header{position:absolute;bottom:auto;width:auto;right:0;flex-direction:row;flex-wrap:wrap;gap:8px 10px}
+    #map{left:0;top:172px}
+    .grp{flex-direction:row;align-items:center;flex-wrap:wrap}
+    #count{margin-top:0;border-top:0;padding-top:0}
+  }
+  .city{background:#2d2d44;color:#fff;border:0;border-radius:14px;padding:5px 10px;font-size:12.5px;
+    cursor:pointer;white-space:nowrap}
+  .city:hover{background:#3d3d5c}
+  .back{display:block;text-align:center;background:#334155;color:#fff;padding:8px 10px;border-radius:10px;
+    font-size:12.5px;font-weight:700;text-decoration:none;border:0;cursor:pointer;width:100%;box-sizing:border-box}
+  .back:hover{background:#475569}
+  .filt{display:inline-flex;align-items:center;gap:4px;background:#2d2d44;border-radius:14px;
+    padding:4px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap;user-select:none}
+  .filt input{cursor:pointer;margin:0}
+  .sel{background:#2d2d44;color:#fff;border:0;border-radius:10px;padding:6px 9px;font-size:12.5px;cursor:pointer}
+  .maplibregl-popup-content{font-size:13px;line-height:1.45;max-width:none}
+  .maplibregl-popup-content a{color:#1560d4}
+  .pri{font-weight:700;color:#fff;padding:3px 8px;border-radius:5px;display:inline-block;margin-bottom:3px}
+  .note{color:#b8580a;font-size:12px;margin-top:3px}
+  .legend{position:absolute;right:8px;bottom:20px;background:#fff;padding:7px 9px;font-size:12px;line-height:1.6;
+    border-radius:6px;box-shadow:0 1px 5px rgba(0,0,0,.3);color:#222;z-index:900;max-width:230px}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:middle;
+    border:2px solid #fff;box-shadow:0 0 0 1px #999}
+  .r{background:#e23b3b}.o{background:#f0932b}.y{background:#f4c20d}.w{background:#c9c9c9}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div style="font-size:52px">🧊</div>
-  <h1>Mapa 3D <span class="tag">beta</span></h1>
-  <p>O experimento 3D (satélite + relevo + prédios, com os mesmos filtros do mapa 2D) está sendo construído.
-     Enquanto isso, use o mapa 2D — todos os recursos estão lá.</p>
-  <a class="btn" href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'}return false">← Voltar ao mapa 2D</a>
+<header>
+  <div class="ttl">🧊 Passeios POA→Europa<span class="beta">3D BETA</span></div>
+  <div class="grp">
+    <a class="back" href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'}return false">← Voltar ao mapa 2D</a>
+  </div>
+  <div class="grp">
+    <b>Prioridade</b>
+    <label class="filt"><input type="checkbox" id="f_r" checked> 🔴 obrigatório</label>
+    <label class="filt"><input type="checkbox" id="f_o" checked> 🟠 quase certo</label>
+    <label class="filt"><input type="checkbox" id="f_y"> 🟡 opcional</label>
+    <label class="filt"><input type="checkbox" id="f_w"> ⚪ sem interesse</label>
+  </div>
+  <div class="grp">
+    <b>Ir para</b>
+    <div class="cities">
+      <button class="city" data-c="madri">🇪🇸 Madrid</button>
+      <button class="city" data-c="barcelona">🇪🇸 Barcelona</button>
+      <button class="city" data-c="marselha">🇫🇷 Marseille</button>
+      <button class="city" data-c="paris">🇫🇷 Paris</button>
+      <button class="city" data-c="porto">🇵🇹 Porto+Douro</button>
+      <button class="city" data-c="lisboa">🇵🇹 Lisboa+Sintra</button>
+      <button class="city" data-c="all">🌍 Tudo</button>
+    </div>
+  </div>
+  <div class="grp">
+    <b>🗺️ Roteiro</b>
+    <select id="f_rota" class="sel"></select>
+  </div>
+  <div class="grp">
+    <b>📅 Filtrar dia</b>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="city" id="dia_prev" title="Dia anterior" style="padding:6px 11px">◀</button>
+      <select id="f_dia" class="sel" style="flex:1;min-width:0"></select>
+      <button class="city" id="dia_next" title="Próximo dia" style="padding:6px 11px">▶</button>
+    </div>
+    <button class="city" id="dia_clear">limpar dia</button>
+    <span class="hint">mostra certos + talvez do dia</span>
+  </div>
+  <div class="grp">
+    <b>⏰ Horário</b>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="city" id="hora_prev" title="Horário anterior" style="padding:6px 11px">◀</button>
+      <select id="f_hora" class="sel" style="flex:1;min-width:0"></select>
+      <button class="city" id="hora_next" title="Próximo horário" style="padding:6px 11px">▶</button>
+    </div>
+    <span class="hint">só horários com item · abre o popup · setas viram o dia</span>
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin-top:7px;font-size:12.5px">
+      <input type="checkbox" id="f_anim" checked style="cursor:pointer;width:15px;height:15px"> 🎬 habilitar animação
+    </label>
+  </div>
+  <div class="grp">
+    <b>🏷️ Categoria</b>
+    <select id="f_cat" class="sel"></select>
+    <button class="city" id="cat_clear">limpar categoria</button>
+    <span class="hint">combina com prioridade + dia</span>
+  </div>
+  <div class="grp">
+    <b>🏔️ Relevo 3D</b>
+    <label class="filt" style="width:auto"><input type="checkbox" id="f_terr" checked> exagero do relevo</label>
+    <span class="hint">satélite Esri + relevo Terrarium · arraste com botão direito p/ inclinar</span>
+  </div>
+  <div id="count"></div>
+</header>
+<div id="map"></div>
+<div class="legend">
+  <span class="dot r"></span>🔴 obrigatório<br>
+  <span class="dot o"></span>🟠 quase certo<br>
+  <span class="dot y"></span>🟡 opcional<br>
+  <span class="dot w"></span>⚪ sem interesse<br>
+  <span style="display:inline-block;width:13px;height:13px;background:#1f6feb;border-radius:3px;border:1.5px solid #fff;box-shadow:0 0 0 1px #444;vertical-align:-2px;margin-right:6px"></span>🚆 estação (dia/hora)<br>
+  <span style="display:inline-block;width:13px;height:13px;background:#0d9488;border-radius:3px;border:1.5px solid #fff;box-shadow:0 0 0 1px #444;vertical-align:-2px;margin-right:6px"></span>✈️ aeroporto (dia/hora)<br>
+  <span style="display:inline-block;width:13px;height:13px;background:#8957e5;border-radius:3px;border:1.5px solid #fff;box-shadow:0 0 0 1px #444;vertical-align:-2px;margin-right:6px"></span>🏨 hotel (fixo)<br>
+  <small>experimento 3D (beta) · dados iguais ao 2D</small>
 </div>
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script>
+/* ============================================================================
+   DADOS — copiados do mapa_passeios.html (2D). Este v2 é auto-contido.
+   ============================================================================ */
+const SRC = {
+  paris:    {blog:'https://apureguria.com/europa/franca/roteiro-em-paris-3-dias-atracoes/', vid:'https://www.youtube.com/watch?v=g29B7_yRjik'},
+  barcelona:{blog:'https://apureguria.com/europa/espanha/o-que-fazer-em-barcelona-roteiro-e-dicas-para-3-dias/', vid:'https://www.youtube.com/watch?v=RWiOCVZFZHQ'},
+  madri:    {blog:'https://apureguria.com/europa/espanha/museu-do-prado-de-graca/', vid:'https://www.youtube.com/watch?v=-Wm6A4Rdi2Q'},
+  porto:    {blog:'https://apureguria.com/europa/portugal/o-que-fazer-em-porto-pontos-turisticos/', vid:'https://www.youtube.com/watch?v=G7yexXyPLAY'},
+  lisboa:   {blog:'https://apureguria.com/europa/portugal/o-que-fazer-em-lisboa-atracoes-dicas/', vid:'https://www.youtube.com/watch?v=wN2trl3dnV8'},
+};
+// [lat, lng, nome, prioridade 'r'|'o'|'y'|'w', cidade, nota?]
+const P = [
+  // ===== Paris =====
+  [48.8722,2.7758,'Disneyland Paris','r','paris'],
+  [48.8606,2.3376,'Louvre','r','paris'],
+  [48.8584,2.2945,'Torre Eiffel','o','paris'],
+  [48.8619,2.2874,'Trocadéro','y','paris'],
+  [48.8530,2.3499,'Notre-Dame','r','paris'],
+  [48.8738,2.2950,'Arco do Triunfo','r','paris'],
+  [48.8554,2.3450,'Sainte-Chapelle (+ Conciergerie)','r','paris'],
+  [48.8867,2.3431,'Montmartre + Sacré-Cœur','r','paris'],
+  [48.8720,2.3316,'Opéra Garnier','r','paris'],
+  [48.8421,2.3220,'Torre Montparnasse','y','paris','🚫 Fechada p/ reforma — o observatório do 56º encerrou em 31/03/2026'],
+  [48.8462,2.3464,'Panthéon','r','paris'],
+  [48.8608,2.2936,'Cruzeiro no Sena (embarque)','r','paris'],
+  [48.8558,2.3656,'Marais (Place des Vosges)','r','paris'],
+  [48.8499,2.3470,'Quartier Latin','r','paris'],
+  [48.8598,2.3626,'Museu Picasso','o','paris'],
+  [48.8593,2.2668,'Marmottan Monet','o','paris'],
+  [48.8508,2.3440,'Cluny (Idade Média)','o','paris'],
+  [48.8049,2.1204,'Versailles','o','paris'],
+  [48.8600,2.3266,'Musée d’Orsay','y','paris'],
+  [48.8638,2.3226,'Orangerie (Nenúfares)','y','paris'],
+  [48.8553,2.3159,'Musée Rodin','y','paris'],
+  [48.8566,2.3126,'Les Invalides (Napoleão)','y','paris'],
+  [48.8339,2.3324,'Catacumbas','y','paris'],
+  [48.8841,2.3322,'Moulin Rouge','y','paris'],
+  [48.8540,2.3330,'Saint-Germain-des-Prés','y','paris'],
+  [48.8517,2.3572,'Île Saint-Louis','y','paris'],
+  [48.8698,2.3078,'Champs-Élysées','y','paris'],
+  [48.8635,2.3275,'Jardin des Tuileries','y','paris'],
+  [48.8462,2.3372,'Jardin du Luxembourg','y','paris'],
+  [48.8556,2.2986,'Piquenique no Champ de Mars','o','paris'],
+  // ===== Barcelona =====
+  [41.4036,2.1744,'Sagrada Família','r','barcelona'],
+  [41.4145,2.1527,'Park Güell','r','barcelona'],
+  [41.3684,2.1533,'MNAC (Palau Nacional)','r','barcelona'],
+  [41.3916,2.1650,'Casa Batlló','o','barcelona'],
+  [41.3953,2.1619,'La Pedrera / Casa Milà','o','barcelona'],
+  [41.4195,2.1620,'Bunkers del Carmel (vista)','y','barcelona','⚠️ Pôr do sol não rola em nov (portões fecham 17:30) — ir de dia'],
+  [41.3875,2.1751,'Palau de la Música','o','barcelona'],
+  [41.3839,2.1762,'Barri Gòtic (Catedral)','o','barcelona'],
+  [41.3838,2.1819,'El Born (Santa Maria del Mar)','o','barcelona'],
+  [41.3730,2.1640,'Tapas + vermut (Carrer Blai)','o','barcelona'],
+  [41.3851,2.1811,'Museu Picasso','y','barcelona'],
+  [41.3687,2.1600,'Fundació Joan Miró','y','barcelona'],
+  [41.3831,2.1668,'MACBA','y','barcelona'],
+  [41.4136,2.1744,'Hospital de Sant Pau','y','barcelona'],
+  [41.3634,2.1653,'Montjuïc (Castell / Font Màgica)','y','barcelona'],
+  [41.3817,2.1720,'La Boqueria','y','barcelona'],
+  [41.3785,2.1925,'Praia de Barceloneta','y','barcelona','⚠️ pode estar friozinho em novembro (época da viagem) — praia mais p/ passeio/paella que p/ banho'],
+  [41.5949,1.8376,'Montserrat','y','barcelona'],
+  [41.2351,1.8115,'Sitges','y','barcelona'],
+  [41.9794,2.8214,'Girona','y','barcelona'],
+  [41.3809,2.1228,'Camp Nou','w','barcelona'],
+  [41.3796,2.1746,'Flamenco (tablao)','w','barcelona'],
+  // ===== Madrid =====
+  [40.4138,-3.6921,'Museo del Prado','r','madri'],
+  [40.4180,-3.7143,'Palácio Real','r','madri'],
+  [40.4158,-3.7142,'Catedral de la Almudena','o','madri'],
+  [40.4290,-3.6810,'Bairro das Grifes - Salamanca','r','madri'],
+  [40.4238,-3.7128,'Maior Zara do Mundo - Plaza de España','r','madri'],
+  [40.4202,-3.7040,'Primark - Gran Vía','r','madri'],
+  [40.4238,-3.6773,'Primark - Salamanca (Conde de Peñalver)','r','madri'],
+  [40.4197,-3.7057,'El Corte Inglés','r','madri'],
+  [40.4240,-3.7176,'Templo de Debod (pôr do sol)','r','madri'],
+  [40.4155,-3.7074,'Plaza Mayor','r','madri'],
+  [40.4169,-3.7033,'Puerta del Sol','r','madri'],
+  [40.4200,-3.7020,'Gran Vía','r','madri'],
+  [40.4160,-3.6949,'Museo Thyssen-Bornemisza','y','madri'],
+  [40.4152,-3.6844,'Parque del Retiro','o','madri'],
+  [40.4166,-3.7075,'Churros con chocolate (San Ginés)','y','madri'],
+  [40.4155,-3.7090,'Mercado de San Miguel','o','madri'],
+  [40.4110,-3.7095,'La Latina','y','madri'],
+  [40.4258,-3.7036,'Malasaña','y','madri'],
+  [40.4220,-3.6970,'Chueca','y','madri'],
+  [39.8628,-4.0273,'Toledo (bate-volta)','o','madri'],
+  [40.4130,-3.7141,'Flamenco (Corral de la Morería)','y','madri'],
+  [40.4531,-3.6883,'Santiago Bernabéu','y','madri'],
+  [40.4184,-3.6968,'Rooftop (Círculo de Bellas Artes)','y','madri'],
+  [40.4113,-3.6936,'CaixaForum','y','madri'],
+  [40.4349,-3.6934,'Museo Sorolla','y','madri'],
+  [40.4193,-3.6934,'Palacio de Cibeles','y','madri'],
+  [40.4066,-3.6906,'Estación de Atocha','y','madri'],
+  [40.9429,-4.1088,'Segovia','o','madri'],
+  [40.5893,-4.1476,'El Escorial','y','madri'],
+  [40.6566,-4.6818,'Ávila','y','madri'],
+  [40.4079,-3.6947,'Reina Sofía (Guernica)','w','madri'],
+  // ===== Porto + Douro =====
+  [41.1878,-7.5340,'Linha do Douro → Pinhão','r','porto'],
+  [41.1470,-8.6148,'Livraria Lello','r','porto'],
+  [41.1408,-8.6110,'Ribeira','r','porto'],
+  [41.1396,-8.6094,'Ponte D. Luís I','r','porto'],
+  [41.1372,-8.6099,'Miradouro Serra do Pilar','r','porto'],
+  [41.1457,-8.6108,'Estação São Bento','r','porto'],
+  [41.1456,-8.6142,'Torre dos Clérigos','r','porto'],
+  [41.1370,-8.6130,'Caves de Gaia (prova)','y','porto'],
+  [41.1479,-8.6220,'Jardins do Palácio de Cristal','o','porto'],
+  [41.1497,-8.6070,'Mercado do Bolhão','o','porto'],
+  [41.1476,-8.6060,'Majestic Café','o','porto'],
+  [41.1414,-8.6152,'Palácio da Bolsa','y','porto'],
+  [41.1409,-8.6156,'Igreja de São Francisco','y','porto'],
+  [41.1410,-8.6118,'Francesinha / jantar Cais da Ribeira','y','porto'],
+  [41.1360,-8.6155,'WOW – World of Wine','y','porto'],
+  [41.1595,-8.6595,'Fundação Serralves','y','porto'],
+  [41.1585,-8.6301,'Casa da Música','y','porto'],
+  // ===== Lisboa + Sintra =====
+  [38.7876,-9.3906,'Sintra — Pena + Regaleira','o','lisboa'],
+  [38.7683,-9.0942,'Altice Arena — Web Summit (Parque das Nações)','r','lisboa'],
+  [38.7139,-9.1335,'Alfama + Castelo de São Jorge','r','lisboa'],
+  [38.7115,-9.1290,'Fado ao vivo em Alfama','r','lisboa'],
+  [38.7377,-9.1537,'Museu Calouste Gulbenkian','r','lisboa'],
+  [38.7107,-9.1426,'Chiado / Bairro Alto','r','lisboa'],
+  [38.7077,-9.1366,'Baixa / Praça do Comércio','r','lisboa'],
+  [38.7186,-9.1330,'Miradouro Senhora do Monte','r','lisboa'],
+  [38.6979,-9.2064,'Belém — Jerónimos','o','lisboa'],
+  [38.6916,-9.2160,'Torre de Belém','o','lisboa'],
+  [38.7071,-9.1459,'Time Out Market','o','lisboa'],
+  [38.7027,-9.1786,'LX Factory','o','lisboa'],
+  [38.7634,-9.0938,'Oceanário (Parque das Nações)','o','lisboa'],
+  [38.7075,-9.1447,'Noite (Pink Street / Ginjinha)','o','lisboa'],
+  [38.7248,-9.1136,'Museu Nacional do Azulejo','y','lisboa'],
+  [38.7043,-9.1650,'Museu Nacional de Arte Antiga','y','lisboa'],
+  [38.6957,-9.1946,'MAAT','y','lisboa'],
+  [38.6979,-9.4215,'Cascais / Estoril','o','lisboa'],
+  [38.7805,-9.4989,'Cabo da Roca','o','lisboa'],
+  [39.3606,-9.1575,'Óbidos','y','lisboa'],
+  [38.5244,-8.8882,'Setúbal / Arrábida','y','lisboa'],
+  [43.2951,5.3745,'Vieux-Port','r','marselha'],
+  [43.2988,5.3688,'Le Panier','y','marselha'],
+  [43.2966,5.3617,'MuCEM + Fort Saint-Jean','r','marselha'],
+  [43.2983,5.3639,'Cathédrale de la Major','o','marselha'],
+  [43.2841,5.3714,'Notre-Dame de la Garde','o','marselha'],
+  [43.3045,5.3936,'Palais Longchamp','o','marselha'],
+  [43.212,5.443,'Calanques (barco)','y','marselha'],
+  [43.294,5.384,'Cours Julien','o','marselha'],
+  [43.2803,5.3253,'Château d’If','y','marselha'],
+  [43.2148,5.5385,'Cassis','y','marselha'],
+  [43.5297,5.4474,'Aix-en-Provence','y','marselha'],
+  [41.4425,-8.2918,'Guimarães (Castelo)','y','porto'],
+  [41.5546,-8.3778,'Braga (Bom Jesus)','y','porto'],
+];
+const PRI = {
+  r:{label:'🔴 Obrigatório', color:'#e23b3b'},
+  o:{label:'🟠 Quase certo', color:'#f0932b'},
+  y:{label:'🟡 Opcional',    color:'#f4c20d'},
+  w:{label:'⚪ Sem interesse',color:'#c9c9c9'},
+};
+// VIEWS: [lat,lng,zoom]
+const VIEWS = {
+  marselha:[43.290,5.380,13],
+  paris:[48.860,2.345,12], barcelona:[41.395,2.165,12.5],
+  madri:[40.418,-3.703,13], porto:[41.145,-8.611,13], lisboa:[38.72,-9.16,11],
+};
+const PHOTO = {
+  'Vieux-Port': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/The_old_Port_%28Vieux_Port%29_of_Marseille_During_early_spring_days.jpg/500px-The_old_Port_%28Vieux_Port%29_of_Marseille_During_early_spring_days.jpg',
+  'Le Panier': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Narrow_street_Le_Panier_Marseille_2026.JPG/500px-Narrow_street_Le_Panier_Marseille_2026.JPG',
+  'MuCEM + Fort Saint-Jean': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Mucem_et_Cath%C3%A9drale_Sainte-Marie-Majeure_de_Marseille.jpg/500px-Mucem_et_Cath%C3%A9drale_Sainte-Marie-Majeure_de_Marseille.jpg',
+  'Cathédrale de la Major': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Cath%C3%A9drale_Sainte-Marie-Majeure_de_Marseille_le_11_f%C3%A9vrier_2023-1.jpg/500px-Cath%C3%A9drale_Sainte-Marie-Majeure_de_Marseille_le_11_f%C3%A9vrier_2023-1.jpg',
+  'Notre-Dame de la Garde': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Notre_Dame_de_la_Garde_%E5%AE%88%E8%AD%B7%E8%81%96%E6%AF%8D%E9%99%A2_-_panoramio_%281%29.jpg/500px-Notre_Dame_de_la_Garde_%E5%AE%88%E8%AD%B7%E8%81%96%E6%AF%8D%E9%99%A2_-_panoramio_%281%29.jpg',
+  'Calanques (barco)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Calanque_d%60en_Vau%2C_Marseille%2C_Provence-Alpes-C%C3%B4te_d%27Azur%2C_France_-_panoramio.jpg/500px-Calanque_d%60en_Vau%2C_Marseille%2C_Provence-Alpes-C%C3%B4te_d%27Azur%2C_France_-_panoramio.jpg',
+  'Cours Julien': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marseille_-_Cours_Julien_%2816272528157%29.jpg/500px-Marseille_-_Cours_Julien_%2816272528157%29.jpg',
+  'Château d’If': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Ch%C3%A2teau_d%27If_%40_Baie_de_Marseille_01.jpg/500px-Ch%C3%A2teau_d%27If_%40_Baie_de_Marseille_01.jpg',
+  'Cassis': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Cassis.jpg/500px-Cassis.jpg',
+  'Aix-en-Provence': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Aix-en-Provence_-_La_Fontaine_Moussue_10.jpg/500px-Aix-en-Provence_-_La_Fontaine_Moussue_10.jpg',
+  'Guimarães (Castelo)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Castelo_de_Guimaraes_%289%29.jpg/500px-Castelo_de_Guimaraes_%289%29.jpg',
+  'Braga (Bom Jesus)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Treppenaufgang_Bom_Jesus_do_Monte.jpg/500px-Treppenaufgang_Bom_Jesus_do_Monte.jpg',
+  'Maior Zara do Mundo - Plaza de España': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Madrid_-_Plaza_de_Espa%C3%B1a%2C_Edificio_Espa%C3%B1a_y_Torre_de_Madrid.jpg/500px-Madrid_-_Plaza_de_Espa%C3%B1a%2C_Edificio_Espa%C3%B1a_y_Torre_de_Madrid.jpg',
+  'Primark - Gran Vía': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/130_Primark%2C_Gran_V%C3%ADa_32_%28Madrid%29%2C_antics_magatzems_Madrid-Par%C3%ADs.jpg/500px-130_Primark%2C_Gran_V%C3%ADa_32_%28Madrid%29%2C_antics_magatzems_Madrid-Par%C3%ADs.jpg',
+  'Primark - Salamanca (Conde de Peñalver)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Conde_de_Pe%C3%B1alver_80%2C_Madrid.JPG/500px-Conde_de_Pe%C3%B1alver_80%2C_Madrid.JPG',
+  'El Corte Inglés': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Edificio_de_El_Corte_Ingl%C3%A9s_en_Callao.jpg/500px-Edificio_de_El_Corte_Ingl%C3%A9s_en_Callao.jpg',
+  'Museu Picasso': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Mus%C3%A9e_Picasso_Paris_-_H%C3%B4tel_Sal%C3%A9_-_Mai_2015_01.JPG/500px-Mus%C3%A9e_Picasso_Paris_-_H%C3%B4tel_Sal%C3%A9_-_Mai_2015_01.JPG',
+  'Saint-Germain-des-Prés': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/St_Germain_des_Pres.jpg/500px-St_Germain_des_Pres.jpg',
+  'Jardin des Tuileries': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Grande_Roue_de_Paris_-_Louvre_et_Jardins_des_Tuileries.jpg/500px-Grande_Roue_de_Paris_-_Louvre_et_Jardins_des_Tuileries.jpg',
+  'Jardin du Luxembourg': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Jardin_du_Luxembourg.JPG/500px-Jardin_du_Luxembourg.JPG',
+  'Tapas + vermut (Carrer Blai)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Blai_10.jpg/500px-Blai_10.jpg',
+  'Fundació Joan Miró': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Fundaci%C3%B3_Joan_Mir%C3%B3.JPG/500px-Fundaci%C3%B3_Joan_Mir%C3%B3.JPG',
+  'MACBA': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Barcelona_-_Museu_d%27Art_Contemporani_de_Barcelona_%28MACBA%29.jpg/500px-Barcelona_-_Museu_d%27Art_Contemporani_de_Barcelona_%28MACBA%29.jpg',
+  'Sitges': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Sitges_-_Ansicht_4.jpg/500px-Sitges_-_Ansicht_4.jpg',
+  'Girona': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Girona_riverside_HDR.jpg/500px-Girona_riverside_HDR.jpg',
+  'Camp Nou': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Barcelona_BW_2019-10-07_10-48-36.jpg/500px-Barcelona_BW_2019-10-07_10-48-36.jpg',
+  'La Latina': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg/500px-Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg',
+  'Malasaña': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Plaza_del_Dos_de_Mayo._Malasa%C3%B1a._Madrid_%284923512321%29.jpg/500px-Plaza_del_Dos_de_Mayo._Malasa%C3%B1a._Madrid_%284923512321%29.jpg',
+  'Chueca': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Madrid_-_Plaza_de_Chueca_1.jpg/500px-Madrid_-_Plaza_de_Chueca_1.jpg',
+  'Rooftop (Círculo de Bellas Artes)': 'https://upload.wikimedia.org/wikipedia/commons/b/b8/C%C3%ADrculo_de_Bellas_Artes_%282587716333%29.jpg',
+  'CaixaForum': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Caixaforum_Madrid_2024.jpg/500px-Caixaforum_Madrid_2024.jpg',
+  'Museo Sorolla': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Museo_Sorolla_%28Madrid%29_01.jpg/500px-Museo_Sorolla_%28Madrid%29_01.jpg',
+  'Estación de Atocha': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Atocha_Railway_Station_-_panoramio.jpg/500px-Atocha_Railway_Station_-_panoramio.jpg',
+  'El Escorial': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/El_escorial_blick_von_oben.jpg/500px-El_escorial_blick_von_oben.jpg',
+  'Ávila': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Avila_-_Basilica_SV_08.jpg/500px-Avila_-_Basilica_SV_08.jpg',
+  'Igreja de São Francisco': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Porto.SanFrancisco02.jpg/500px-Porto.SanFrancisco02.jpg',
+  'WOW – World of Wine': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bastiao_da_Teleferico_de_Gaia_%286974930884%29.jpg/500px-Bastiao_da_Teleferico_de_Gaia_%286974930884%29.jpg',
+  'Fundação Serralves': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Casa_de_Serralves_2015.jpg/500px-Casa_de_Serralves_2015.jpg',
+  'Casa da Música': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/86724-Porto_%2849052540207%29.jpg/500px-86724-Porto_%2849052540207%29.jpg',
+  'Museu Nacional do Azulejo': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Igreja_do_Convento_da_Madre_de_Deus%2C_Lisboa_%28Portugal%29.jpg/500px-Igreja_do_Convento_da_Madre_de_Deus%2C_Lisboa_%28Portugal%29.jpg',
+  'Museu Nacional de Arte Antiga': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/MNAA.jpg/500px-MNAA.jpg',
+  'MAAT': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/MAAT_%28Museu_de_Arte%2C_Arquitetura_e_Tecnologia%29_-_Lisboa_-_Portugal_%2839605810484%29.jpg/500px-MAAT_%28Museu_de_Arte%2C_Arquitetura_e_Tecnologia%29_-_Lisboa_-_Portugal_%2839605810484%29.jpg',
+  'Óbidos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/%C3%93bidos_view592.jpg/500px-%C3%93bidos_view592.jpg',
+  'Setúbal / Arrábida': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Setubal_III_%28cropped%29.jpg/500px-Setubal_III_%28cropped%29.jpg',
+  'Altice Arena — Web Summit (Parque das Nações)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/MEO_Arena.png/500px-MEO_Arena.png',
+  'Disneyland Paris': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Disneyland_Park_05%2C_Paris_22_August_2013.jpg/500px-Disneyland_Park_05%2C_Paris_22_August_2013.jpg',
+  'Louvre': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Louvre_museum_01.jpg/500px-Louvre_museum_01.jpg',
+  'Torre Eiffel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Eiffel_Tower_from_Champ-de-Mars%2C_7_August_2017.jpg/500px-Eiffel_Tower_from_Champ-de-Mars%2C_7_August_2017.jpg',
+  'Notre-Dame': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Notre-Dame_de_Paris%2C_4_October_2017.jpg/500px-Notre-Dame_de_Paris%2C_4_October_2017.jpg',
+  'Arco do Triunfo': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg/500px-Arc_de_Triomphe%2C_Paris_21_October_2010.jpg',
+  'Sainte-Chapelle (+ Conciergerie)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Szensapel.jpg/500px-Szensapel.jpg',
+  'Montmartre + Sacré-Cœur': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Le_sacre_coeur.jpg/500px-Le_sacre_coeur.jpg',
+  'Opéra Garnier': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Paris_Opera_full_frontal_architecture%2C_May_2009.jpg/500px-Paris_Opera_full_frontal_architecture%2C_May_2009.jpg',
+  'Torre Montparnasse': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Remote_view_of_the_Tour_Montparnasse_%26_Eiffel_Tower_in_2005.jpg/500px-Remote_view_of_the_Tour_Montparnasse_%26_Eiffel_Tower_in_2005.jpg',
+  'Panthéon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Panth%C3%A9on%2C_Paris_25_March_2012.jpg/500px-Panth%C3%A9on%2C_Paris_25_March_2012.jpg',
+  'Cruzeiro no Sena (embarque)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Promenade_%C3%A0_Orl%C3%A9ans_avril_2022-04-19.jpg/500px-Promenade_%C3%A0_Orl%C3%A9ans_avril_2022-04-19.jpg',
+  'Marais (Place des Vosges)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Place_des_Vosges_vue_a%C3%A9rienne.png/500px-Place_des_Vosges_vue_a%C3%A9rienne.png',
+  'Quartier Latin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Quartier_Commons.jpg/500px-Quartier_Commons.jpg',
+  'Marmottan Monet': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Mus%C3%A9e_Marmottan_Monet%2C_Paris%2C_from_street.jpg/500px-Mus%C3%A9e_Marmottan_Monet%2C_Paris%2C_from_street.jpg',
+  'Cluny (Idade Média)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/H%C3%B4tel_de_Cluny%2C_Paris_24_April_2012.jpg/500px-H%C3%B4tel_de_Cluny%2C_Paris_24_April_2012.jpg',
+  'Versailles': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Versailles_collage.jpg/500px-Versailles_collage.jpg',
+  'Musée d’Orsay': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Gare_d%27Orsay_%2849570190081%29.jpg/500px-Gare_d%27Orsay_%2849570190081%29.jpg',
+  'Orangerie (Nenúfares)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/2011-12-Musee_de_lorangerie.jpg/500px-2011-12-Musee_de_lorangerie.jpg',
+  'Musée Rodin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Mus%C3%A9e_Rodin_and_garden%2C_Paris_21_April_2010.jpg/500px-Mus%C3%A9e_Rodin_and_garden%2C_Paris_21_April_2010.jpg',
+  'Les Invalides (Napoleão)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Invalides_aerial_view.jpg/500px-Invalides_aerial_view.jpg',
+  'Catacumbas': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Catacumbas%2C_Par%C3%ADs%2C_Francia%2C_2022-11-01%2C_DD_117-119_HDR.jpg/500px-Catacumbas%2C_Par%C3%ADs%2C_Francia%2C_2022-11-01%2C_DD_117-119_HDR.jpg',
+  'Moulin Rouge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Moulin_Rouge%2C_17_April_2011.jpg/500px-Moulin_Rouge%2C_17_April_2011.jpg',
+  'Île Saint-Louis': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Paris_ile_Cite_ile_Saint_Louis_pont_Tournelle.jpg/500px-Paris_ile_Cite_ile_Saint_Louis_pont_Tournelle.jpg',
+  'Champs-Élysées': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Avenue_des_Champs-Elys%C3%A9es_from_top_of_Arc_de_triomphe_Paris.jpg/500px-Avenue_des_Champs-Elys%C3%A9es_from_top_of_Arc_de_triomphe_Paris.jpg',
+  'Piquenique no Champ de Mars': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Champ_de_Mars_from_the_Eiffel_Tower_-_July_2006_edit.jpg/500px-Champ_de_Mars_from_the_Eiffel_Tower_-_July_2006_edit.jpg',
+  'Sagrada Família': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/SF_maig_2_cropped.jpg/500px-SF_maig_2_cropped.jpg',
+  'Park Güell': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/El_bicho_2.JPG/500px-El_bicho_2.JPG',
+  'MNAC (Palau Nacional)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/WLM14ES_-_Palau_Nacional_i_seu_del_MNAC_de_Barcelona_-_MARIA_ROSA_FERRE.jpg/500px-WLM14ES_-_Palau_Nacional_i_seu_del_MNAC_de_Barcelona_-_MARIA_ROSA_FERRE.jpg',
+  'Casa Batlló': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Casa_Batllo_Overview_Barcelona_Spain_cut.jpg/500px-Casa_Batllo_Overview_Barcelona_Spain_cut.jpg',
+  'La Pedrera / Casa Milà': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Casa_Mil%C3%A0_-_Barcelona%2C_Spain_-_Jan_2007.jpg/500px-Casa_Mil%C3%A0_-_Barcelona%2C_Spain_-_Jan_2007.jpg',
+  'Bunkers del Carmel (vista)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Tur%C3%B3_Rovira.jpg/500px-Tur%C3%B3_Rovira.jpg',
+  'Palau de la Música': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Palau_de_musica_2.JPG/500px-Palau_de_musica_2.JPG',
+  'Barri Gòtic (Catedral)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/050529_Barcelona_099.jpg/500px-050529_Barcelona_099.jpg',
+  'El Born (Santa Maria del Mar)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/01_Santa_Maria_del_Mar_%28Barcelona%29.jpg/500px-01_Santa_Maria_del_Mar_%28Barcelona%29.jpg',
+  'Hospital de Sant Pau': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Barcelona_San_Pau_2.JPG/500px-Barcelona_San_Pau_2.JPG',
+  'Montjuïc (Castell / Font Màgica)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Fale_-_Spain_-_Barcelona_-_8.jpg/500px-Fale_-_Spain_-_Barcelona_-_8.jpg',
+  'La Boqueria': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Barcelona_-_Mercat_de_Sant_Josep_%28la_Boqueria%29_-_Entrance.jpg/500px-Barcelona_-_Mercat_de_Sant_Josep_%28la_Boqueria%29_-_Entrance.jpg',
+  'Praia de Barceloneta': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Barrio_de_la_Barceloneta.jpg/500px-Barrio_de_la_Barceloneta.jpg',
+  'Montserrat': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Monestir_de_Montserrat_vista_Roca_de_St._Jaume.jpg/960px-Monestir_de_Montserrat_vista_Roca_de_St._Jaume.jpg',
+  'Flamenco (tablao)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/2023-11-16_Gala_de_los_Latin_Grammy%2C_27_%28cropped%29.jpg/500px-2023-11-16_Gala_de_los_Latin_Grammy%2C_27_%28cropped%29.jpg',
+  'Museo del Prado': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Museo_del_Prado_2016_%2825185969599%29.jpg/500px-Museo_del_Prado_2016_%2825185969599%29.jpg',
+  'Palácio Real': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Palacio_Real_de_Madrid_Julio_2016_%28cropped%29.jpg/500px-Palacio_Real_de_Madrid_Julio_2016_%28cropped%29.jpg',
+  'Catedral de la Almudena': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Almudena_2022_-_overview.jpg/500px-Almudena_2022_-_overview.jpg',
+  'Bairro das Grifes - Salamanca': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Madrid_-_Valentino_%28Calle_de_Jos%C3%A9_Ortega_y_Gasset_%2C16%29.jpg/500px-Madrid_-_Valentino_%28Calle_de_Jos%C3%A9_Ortega_y_Gasset_%2C16%29.jpg',
+  'Templo de Debod (pôr do sol)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/El_Templo_de_Debod.JPG/500px-El_Templo_de_Debod.JPG',
+  'Plaza Mayor': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Plaza_Mayor_de_Madrid_06.jpg/500px-Plaza_Mayor_de_Madrid_06.jpg',
+  'Puerta del Sol': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Plaza_de_sol_madrid.jpg/500px-Plaza_de_sol_madrid.jpg',
+  'Gran Vía': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Callao_in_the_twilight_zone.jpg/500px-Callao_in_the_twilight_zone.jpg',
+  'Museo Thyssen-Bornemisza': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Museo_Thyssen-Bornemisza_%28Madrid%29_07.jpg/500px-Museo_Thyssen-Bornemisza_%28Madrid%29_07.jpg',
+  'Parque del Retiro': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Le_parc_du_Retiro_%28Madrid%29_%284684143195%29.jpg/500px-Le_parc_du_Retiro_%28Madrid%29_%284684143195%29.jpg',
+  'Churros con chocolate (San Ginés)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Chocolater%C3%ADa_%22San_Gines%22-Madrid-2009.jpg/500px-Chocolater%C3%ADa_%22San_Gines%22-Madrid-2009.jpg',
+  'Mercado de San Miguel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Olivas-Abuela_%28Madrid%29.jpg/500px-Olivas-Abuela_%28Madrid%29.jpg',
+  'Toledo (bate-volta)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg/500px-Plaza_Mayor_De_Madrid_%28215862629%29_edited.jpeg',
+  'Flamenco (Corral de la Morería)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Corral_de_la_Morer%C3%ADa.JPG/500px-Corral_de_la_Morer%C3%ADa.JPG',
+  'Santiago Bernabéu': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Estadio_Santiago_Bernab%C3%A9u_-_Real_Madrid-Real_Sociedad.jpg/500px-Estadio_Santiago_Bernab%C3%A9u_-_Real_Madrid-Real_Sociedad.jpg',
+  'Palacio de Cibeles': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Plaza_de_Cibeles_Palacio_de_Comunicaciones.jpg/500px-Plaza_de_Cibeles_Palacio_de_Comunicaciones.jpg',
+  'Segovia': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Landscape-mountain-architecture-sky-town-city-626579.jpg/500px-Landscape-mountain-architecture-sky-town-city-626579.jpg',
+  'Reina Sofía (Guernica)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Reina_Do%C3%B1a_Sofia.jpg/500px-Reina_Do%C3%B1a_Sofia.jpg',
+  'Linha do Douro → Pinhão': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/CP_1400_Aregos_-_Mosteiro.jpg/500px-CP_1400_Aregos_-_Mosteiro.jpg',
+  'Livraria Lello': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Livraria_Lello%2C_Porto.jpg/500px-Livraria_Lello%2C_Porto.jpg',
+  'Ribeira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Porto_des_de_Vila_Nova_de_Gaia.JPG/500px-Porto_des_de_Vila_Nova_de_Gaia.JPG',
+  'Ponte D. Luís I': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Ponte_Dom_Lu%C3%ADs_I_in_Porto%2C_Portugal.jpg/500px-Ponte_Dom_Lu%C3%ADs_I_in_Porto%2C_Portugal.jpg',
+  'Miradouro Serra do Pilar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Porto_-_Jardim_do_Morro.jpg/500px-Porto_-_Jardim_do_Morro.jpg',
+  'Estação São Bento': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Esta%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Porto_-_S%C3%A3o_Bento.JPG/500px-Esta%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Porto_-_S%C3%A3o_Bento.JPG',
+  'Torre dos Clérigos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Vitoria-Igreja_e_Torre_dos_Cl%C3%A9rigos_%281%29_%28cropped%29.jpg/500px-Vitoria-Igreja_e_Torre_dos_Cl%C3%A9rigos_%281%29_%28cropped%29.jpg',
+  'Caves de Gaia (prova)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Sandeman_%283897743435%29_%282%29.jpg/500px-Sandeman_%283897743435%29_%282%29.jpg',
+  'Jardins do Palácio de Cristal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Gardens_of_the_Pal%C3%A1cio_de_Cristal_%28Porto%29_11.jpg/500px-Gardens_of_the_Pal%C3%A1cio_de_Cristal_%28Porto%29_11.jpg',
+  'Mercado do Bolhão': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Bolh%C3%A3o2023.jpg/500px-Bolh%C3%A3o2023.jpg',
+  'Majestic Café': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Porto_Cafe_Majestic.JPG/500px-Porto_Cafe_Majestic.JPG',
+  'Palácio da Bolsa': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/BolsaValoresPorto.jpg/500px-BolsaValoresPorto.jpg',
+  'Francesinha / jantar Cais da Ribeira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/A_Francesinha_%285401346513%29.jpg/500px-A_Francesinha_%285401346513%29.jpg',
+  'Sintra — Pena + Regaleira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Sintra_-_Palacio_da_Pena_%2820332995770%29_%28cropped2%29.jpg/500px-Sintra_-_Palacio_da_Pena_%2820332995770%29_%28cropped2%29.jpg',
+  'Alfama + Castelo de São Jorge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Alfama%2C_Lisboa_-_2010-09-09.jpg/500px-Alfama%2C_Lisboa_-_2010-09-09.jpg',
+  'Fado ao vivo em Alfama': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Alfama%2C_Lisboa_-_2010-09-09.jpg/500px-Alfama%2C_Lisboa_-_2010-09-09.jpg',
+  'Museu Calouste Gulbenkian': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/330483_-_Funda%C3%A7%C3%A3o_Calouste_Gulbenkian.jpg/500px-330483_-_Funda%C3%A7%C3%A3o_Calouste_Gulbenkian.jpg',
+  'Chiado / Bairro Alto': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Estaci%C3%B3n_Metropolitana_de_Baixa-Chiado._%286086217241%29.jpg/500px-Estaci%C3%B3n_Metropolitana_de_Baixa-Chiado._%286086217241%29.jpg',
+  'Baixa / Praça do Comércio': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Lisbon_main_square_%2836622604910%29.jpg/500px-Lisbon_main_square_%2836622604910%29.jpg',
+  'Miradouro Senhora do Monte': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Miradouro_Nossa_Senhora_do_Monte_II.jpg/500px-Miradouro_Nossa_Senhora_do_Monte_II.jpg',
+  'Belém — Jerónimos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Mosteiro_dos_Jeronimos_-_Left_Wing.jpg/500px-Mosteiro_dos_Jeronimos_-_Left_Wing.jpg',
+  'Torre de Belém': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Torre_Bel%C3%A9m_April_2009-4a.jpg/500px-Torre_Bel%C3%A9m_April_2009-4a.jpg',
+  'Time Out Market': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Drinks_at_Mercado_da_Ribeira_%28Lissabon_2016%29_%2826003375942%29.jpg/500px-Drinks_at_Mercado_da_Ribeira_%28Lissabon_2016%29_%2826003375942%29.jpg',
+  'LX Factory': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/LX_Factory_%2822379332901%29.jpg/500px-LX_Factory_%2822379332901%29.jpg',
+  'Oceanário (Parque das Nações)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Lisbon_Oceanarium_%2834535938846%29.jpg/500px-Lisbon_Oceanarium_%2834535938846%29.jpg',
+  'Noite (Pink Street / Ginjinha)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Lisbon_Pink_Street.jpg/500px-Lisbon_Pink_Street.jpg',
+  'Cascais / Estoril': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Faro_de_Santa_Marta%2C_Cascais%2C_Portugal%2C_2022-07-25%2C_DD_13-15_HDR.jpg/500px-Faro_de_Santa_Marta%2C_Cascais%2C_Portugal%2C_2022-07-25%2C_DD_13-15_HDR.jpg',};
+// rótulo de cidade p/ montar a busca (Maps abre o LOCAL pelo nome, não a coordenada)
+const CITY = {madri:'Madrid', barcelona:'Barcelona', marselha:'Marseille', paris:'Paris', porto:'Porto', lisboa:'Lisboa'};
+function term(nome, cid){
+  const n = nome.split(' (')[0].split(' — ')[0].split(' / ')[0].trim();
+  return n + ', ' + (CITY[cid]||'');
+}
+const DIA = {"paris|Disneyland Paris": {"c": ["30/10"]}, "paris|Louvre": {"c": ["31/10"]}, "paris|Torre Eiffel": {"c": ["31/10"], "m": ["29/10"]}, "paris|Notre-Dame": {"c": ["01/11"]}, "paris|Arco do Triunfo": {"c": ["01/11"]}, "paris|Sainte-Chapelle (+ Conciergerie)": {"c": ["01/11"]}, "paris|Montmartre + Sacré-Cœur": {"c": ["31/10"]}, "paris|Opéra Garnier": {"c": ["02/11"]}, "paris|Panthéon": {"c": ["01/11"]}, "paris|Cruzeiro no Sena (embarque)": {"c": ["29/10"]}, "paris|Marais (Place des Vosges)": {"m": ["02/11"]}, "paris|Quartier Latin": {"c": ["01/11"]}, "paris|Museu Picasso": {"m": ["02/11"]}, "paris|Cluny (Idade Média)": {"m": ["31/10"]}, "paris|Versailles": {"c": ["01/11"]}, "paris|Musée d’Orsay": {"m": ["31/10", "02/11"]}, "paris|Orangerie (Nenúfares)": {"m": ["31/10"]}, "paris|Musée Rodin": {"m": ["31/10"]}, "paris|Les Invalides (Napoleão)": {"m": ["31/10"]}, "paris|Moulin Rouge": {"m": ["01/11"]}, "paris|Saint-Germain-des-Prés": {"m": ["31/10"]}, "paris|Île Saint-Louis": {"m": ["31/10"]}, "paris|Champs-Élysées": {"c": ["01/11"]}, "paris|Jardin des Tuileries": {"m": ["31/10"]}, "paris|Jardin du Luxembourg": {"m": ["31/10"]}, "paris|Piquenique no Champ de Mars": {"m": ["31/10"]}, "barcelona|Sagrada Família": {"c": ["27/10"]}, "barcelona|Park Güell": {"c": ["27/10"]}, "barcelona|MNAC (Palau Nacional)": {"c": ["28/10"]}, "barcelona|Casa Batlló": {"c": ["27/10"]}, "barcelona|La Pedrera / Casa Milà": {"c": ["27/10"]}, "barcelona|Bunkers del Carmel (vista)": {"c": ["28/10"]}, "barcelona|Palau de la Música": {"c": ["28/10"]}, "barcelona|Barri Gòtic (Catedral)": {"c": ["28/10"]}, "barcelona|El Born (Santa Maria del Mar)": {"c": ["28/10"]}, "barcelona|Tapas + vermut (Carrer Blai)": {"c": ["27/10"]}, "barcelona|Museu Picasso": {"m": ["28/10"]}, "barcelona|Fundació Joan Miró": {"m": ["28/10"]}, "barcelona|Hospital de Sant Pau": {"m": ["27/10"]}, "barcelona|Montjuïc (Castell / Font Màgica)": {"c": ["28/10"]}, "barcelona|La Boqueria": {"c": ["28/10"]}, "barcelona|Praia de Barceloneta": {"m": ["28/10"]}, "barcelona|Montserrat": {"m": ["28/10"]}, "madri|Museo del Prado": {"c": ["25/10"]}, "madri|Palácio Real": {"c": ["26/10"]}, "madri|Catedral de la Almudena": {"c": ["26/10"]}, "madri|Bairro das Grifes - Salamanca": {"c": ["25/10"]}, "madri|Maior Zara do Mundo - Plaza de España": {"c": ["25/10"]}, "madri|Primark - Gran Vía": {"c": ["25/10"]}, "madri|Primark - Salamanca (Conde de Peñalver)": {"c": ["25/10"]}, "madri|El Corte Inglés": {"c": ["25/10"], "m": ["26/10"]}, "madri|Templo de Debod (pôr do sol)": {"c": ["24/10"]}, "madri|Plaza Mayor": {"c": ["24/10"]}, "madri|Puerta del Sol": {"c": ["24/10"]}, "madri|Gran Vía": {"c": ["24/10"]}, "madri|Museo Thyssen-Bornemisza": {"c": ["26/10"]}, "madri|Parque del Retiro": {"c": ["25/10"]}, "madri|Churros con chocolate (San Ginés)": {"m": ["24/10"]}, "madri|Mercado de San Miguel": {"c": ["26/10"]}, "madri|La Latina": {"m": ["26/10"]}, "madri|CaixaForum": {"m": ["25/10"]}, "madri|Museo Sorolla": {"m": ["26/10"]}, "madri|Palacio de Cibeles": {"m": ["25/10"]}, "madri|Estación de Atocha": {"m": ["26/10"]}, "porto|Linha do Douro → Pinhão": {"c": ["07/11"]}, "porto|Livraria Lello": {"c": ["08/11"]}, "porto|Ribeira": {"c": ["08/11"]}, "porto|Ponte D. Luís I": {"c": ["08/11"]}, "porto|Miradouro Serra do Pilar": {"c": ["08/11"]}, "porto|Estação São Bento": {"c": ["08/11"]}, "porto|Torre dos Clérigos": {"c": ["08/11"]}, "porto|Caves de Gaia (prova)": {"c": ["07/11"], "m": ["08/11"]}, "porto|Jardins do Palácio de Cristal": {"m": ["08/11"]}, "porto|Mercado do Bolhão": {"m": ["08/11"]}, "porto|Majestic Café": {"m": ["08/11"]}, "porto|Palácio da Bolsa": {"m": ["08/11"]}, "porto|Igreja de São Francisco": {"m": ["08/11"]}, "porto|Francesinha / jantar Cais da Ribeira": {"c": ["08/11"]}, "porto|WOW – World of Wine": {"m": ["08/11"]}, "lisboa|Sintra — Pena + Regaleira": {"c": ["13/11"]}, "lisboa|Altice Arena — Web Summit (Parque das Nações)": {"c": ["09/11", "10/11", "11/11", "12/11"]}, "lisboa|Alfama + Castelo de São Jorge": {"c": ["14/11"]}, "lisboa|Fado ao vivo em Alfama": {"c": ["09/11"]}, "lisboa|Museu Calouste Gulbenkian": {"c": ["11/11"]}, "lisboa|Chiado / Bairro Alto": {"c": ["11/11"]}, "lisboa|Baixa / Praça do Comércio": {"c": ["11/11"], "m": ["08/11", "10/11"]}, "lisboa|Miradouro Senhora do Monte": {"c": ["11/11"], "m": ["14/11"]}, "lisboa|Belém — Jerónimos": {"c": ["14/11"]}, "lisboa|Torre de Belém": {"c": ["14/11"]}, "lisboa|Time Out Market": {"c": ["10/11"], "m": ["14/11"]}, "lisboa|LX Factory": {"m": ["12/11"]}, "lisboa|Oceanário (Parque das Nações)": {"c": ["12/11"]}, "lisboa|Noite (Pink Street / Ginjinha)": {"c": ["11/11"], "m": ["14/11"]}, "lisboa|Museu Nacional do Azulejo": {"c": ["12/11"]}, "lisboa|Museu Nacional de Arte Antiga": {"m": ["12/11"]}, "lisboa|MAAT": {"m": ["12/11"]}, "lisboa|Cascais / Estoril": {"c": ["13/11"]}, "lisboa|Cabo da Roca": {"c": ["13/11"]}, "lisboa|Óbidos": {"m": ["12/11"]}};
+const HORA = {"madri|Plaza Mayor": "16:30–17:15", "madri|Puerta del Sol": "15:45–16:30", "madri|Gran Vía": "15:00–15:45", "madri|Templo de Debod (pôr do sol)": "18:30–19:45", "madri|Museo del Prado": "09:30–12:30", "madri|Palácio Real": "16:00–18:00 (grátis BR)", "madri|Catedral de la Almudena": "16:00–18:00 (ao lado)", "madri|Parque del Retiro": "12:30–13:19 (colado ao Prado)", "madri|Museo Thyssen-Bornemisza": "12:00–14:00 (grátis seg)", "madri|Mercado de San Miguel": "11:00–12:00", "madri|Bairro das Grifes - Salamanca": "14:30–15:10", "madri|Maior Zara do Mundo - Plaza de España": "18:17–19:07", "madri|Primark - Gran Vía": "17:07–18:07", "madri|Primark - Salamanca (Conde de Peñalver)": "15:20–16:10", "madri|El Corte Inglés": "16:25–17:05 (25) · manhã (26, se fechou)", "barcelona|Sagrada Família": "09:30–11:30", "barcelona|Casa Batlló": "17:15–18:45", "barcelona|La Pedrera / Casa Milà": "17:45–19:30", "barcelona|Barri Gòtic (Catedral)": "09:30–11:30", "barcelona|La Boqueria": "09:30–11:30", "barcelona|El Born (Santa Maria del Mar)": "09:30–11:30", "barcelona|Palau de la Música": "11:45–12:45", "barcelona|Tapas + vermut (Carrer Blai)": "20:30 (jantar)", "barcelona|Park Güell": "12:00–13:30", "barcelona|MNAC (Palau Nacional)": "15:00–17:00", "barcelona|Montjuïc (Castell / Font Màgica)": "17:00–19:30", "barcelona|Bunkers del Carmel (vista)": "17:00–18:30", "paris|Torre Eiffel": "18:00–20:00 (subir)", "paris|Cruzeiro no Sena (embarque)": "19:30–20:30", "paris|Disneyland Paris": "09:00–20:00", "paris|Louvre": "09:00–12:00", "paris|Sainte-Chapelle (+ Conciergerie)": "13:30–14:30", "paris|Notre-Dame": "14:30–15:15", "paris|Quartier Latin": "15:30–17:15", "paris|Panthéon": "15:30–17:15", "paris|Versailles": "09:30–13:30", "paris|Montmartre + Sacré-Cœur": "15:30–17:30", "paris|Arco do Triunfo": "18:00–19:00", "paris|Champs-Élysées": "18:00–19:00", "paris|Opéra Garnier": "10:00–10:50", "porto|Linha do Douro → Pinhão": "08:15–19:30 (dia inteiro)", "porto|Caves de Gaia (prova)": "~19:30", "porto|Livraria Lello": "09:30–13:00", "porto|Estação São Bento": "09:30–13:00", "porto|Torre dos Clérigos": "09:30–13:00", "porto|Ribeira": "18:20–19:30", "porto|Ponte D. Luís I": "18:20–19:30", "porto|Miradouro Serra do Pilar": "18:20–19:30 (Ribeira iluminada)", "porto|Francesinha / jantar Cais da Ribeira": "jantar", "lisboa|Altice Arena — Web Summit (Parque das Nações)": "09:00–18:00", "lisboa|Belém — Jerónimos": "14/11 manhã (casal)", "lisboa|Torre de Belém": "14/11 manhã (casal)", "lisboa|Fado ao vivo em Alfama": "20:00 (jantar)", "lisboa|Museu Calouste Gulbenkian": "dia (Paula)", "lisboa|Chiado / Bairro Alto": "dia (Paula)", "lisboa|Baixa / Praça do Comércio": "dia (Paula)", "lisboa|Oceanário (Parque das Nações)": "17:00–20:00 (casal · dia PROVISÓRIO, pode mudar · Maicon sai do WS 16:30 · últ. entrada 19h)", "lisboa|Noite (Pink Street / Ginjinha)": "20:00", "lisboa|Sintra — Pena + Regaleira": "13/11 tour dia inteiro (GetYourGuide, 08:00)", "lisboa|Cascais / Estoril": "13/11 (tour, tarde)", "lisboa|Cabo da Roca": "13/11 (tour, pôr do sol)", "lisboa|Alfama + Castelo de São Jorge": "14/11 tarde + pôr do sol (casal)", "lisboa|Miradouro Senhora do Monte": "dia (Paula)"};
+const CAT = {"marselha|Vieux-Port":"bairro", "marselha|Le Panier":"bairro", "marselha|MuCEM + Fort Saint-Jean":"museu", "marselha|Cathédrale de la Major":"monum", "marselha|Notre-Dame de la Garde":"monum", "marselha|Palais Longchamp":"monum", "marselha|Calanques (barco)":"exp", "marselha|Cours Julien":"bairro", "marselha|Château d’If":"monum", "marselha|Cassis":"bate", "marselha|Aix-en-Provence":"bate", "porto|Guimarães (Castelo)":"bate", "porto|Braga (Bom Jesus)":"bate", "paris|Disneyland Paris":"exp", "paris|Louvre":"museu", "paris|Torre Eiffel":"monum", "paris|Trocadéro":"monum", "paris|Notre-Dame":"monum", "paris|Arco do Triunfo":"monum", "paris|Sainte-Chapelle (+ Conciergerie)":"monum", "paris|Montmartre + Sacré-Cœur":"bairro", "paris|Opéra Garnier":"monum", "paris|Torre Montparnasse":"monum", "paris|Panthéon":"monum", "paris|Cruzeiro no Sena (embarque)":"exp", "paris|Marais (Place des Vosges)":"bairro", "paris|Quartier Latin":"bairro", "paris|Museu Picasso":"museu", "paris|Marmottan Monet":"museu", "paris|Cluny (Idade Média)":"museu", "paris|Versailles":"bate", "paris|Musée d’Orsay":"museu", "paris|Orangerie (Nenúfares)":"museu", "paris|Musée Rodin":"museu", "paris|Les Invalides (Napoleão)":"museu", "paris|Catacumbas":"monum", "paris|Moulin Rouge":"exp", "paris|Saint-Germain-des-Prés":"bairro", "paris|Île Saint-Louis":"bairro", "paris|Champs-Élysées":"bairro", "paris|Jardin des Tuileries":"parque", "paris|Jardin du Luxembourg":"parque", "paris|Piquenique no Champ de Mars":"exp", "barcelona|Sagrada Família":"gaudi", "barcelona|Park Güell":"gaudi", "barcelona|MNAC (Palau Nacional)":"museu", "barcelona|Casa Batlló":"gaudi", "barcelona|La Pedrera / Casa Milà":"gaudi", "barcelona|Bunkers del Carmel (vista)":"monum", "barcelona|Palau de la Música":"gaudi", "barcelona|Barri Gòtic (Catedral)":"bairro", "barcelona|El Born (Santa Maria del Mar)":"bairro", "barcelona|Tapas + vermut (Carrer Blai)":"exp", "barcelona|Museu Picasso":"museu", "barcelona|Fundació Joan Miró":"museu", "barcelona|MACBA":"museu", "barcelona|Hospital de Sant Pau":"gaudi", "barcelona|Montjuïc (Castell / Font Màgica)":"monum", "barcelona|La Boqueria":"bairro", "barcelona|Praia de Barceloneta":"bairro", "barcelona|Montserrat":"bate", "barcelona|Sitges":"bate", "barcelona|Girona":"bate", "barcelona|Camp Nou":"exp", "barcelona|Flamenco (tablao)":"exp", "madri|Museo del Prado":"museu", "madri|Palácio Real":"monum", "madri|Catedral de la Almudena":"monum", "madri|Bairro das Grifes - Salamanca":"compras", "madri|Maior Zara do Mundo - Plaza de España":"compras", "madri|Primark - Gran Vía":"compras", "madri|Primark - Salamanca (Conde de Peñalver)":"compras", "madri|El Corte Inglés":"compras", "madri|Templo de Debod (pôr do sol)":"monum", "madri|Plaza Mayor":"monum", "madri|Puerta del Sol":"monum", "madri|Gran Vía":"monum", "madri|Museo Thyssen-Bornemisza":"museu", "madri|Parque del Retiro":"parque", "madri|Churros con chocolate (San Ginés)":"exp", "madri|Mercado de San Miguel":"bairro", "madri|La Latina":"bairro", "madri|Malasaña":"bairro", "madri|Chueca":"bairro", "madri|Toledo (bate-volta)":"bate", "madri|Flamenco (Corral de la Morería)":"exp", "madri|Santiago Bernabéu":"exp", "madri|Rooftop (Círculo de Bellas Artes)":"exp", "madri|CaixaForum":"museu", "madri|Museo Sorolla":"museu", "madri|Palacio de Cibeles":"monum", "madri|Estación de Atocha":"monum", "madri|Segovia":"bate", "madri|El Escorial":"bate", "madri|Ávila":"bate", "madri|Reina Sofía (Guernica)":"museu", "porto|Linha do Douro → Pinhão":"douro", "porto|Livraria Lello":"monum", "porto|Ribeira":"bairro", "porto|Ponte D. Luís I":"monum", "porto|Miradouro Serra do Pilar":"monum", "porto|Estação São Bento":"monum", "porto|Torre dos Clérigos":"monum", "porto|Caves de Gaia (prova)":"douro", "porto|Jardins do Palácio de Cristal":"parque", "porto|Mercado do Bolhão":"bairro", "porto|Majestic Café":"exp", "porto|Palácio da Bolsa":"monum", "porto|Igreja de São Francisco":"monum", "porto|Francesinha / jantar Cais da Ribeira":"exp", "porto|WOW – World of Wine":"douro", "porto|Fundação Serralves":"museu", "porto|Casa da Música":"museu", "lisboa|Sintra — Pena + Regaleira":"bate", "lisboa|Altice Arena — Web Summit (Parque das Nações)":"ws", "lisboa|Alfama + Castelo de São Jorge":"bairro", "lisboa|Fado ao vivo em Alfama":"exp", "lisboa|Museu Calouste Gulbenkian":"museu", "lisboa|Chiado / Bairro Alto":"bairro", "lisboa|Baixa / Praça do Comércio":"bairro", "lisboa|Miradouro Senhora do Monte":"monum", "lisboa|Belém — Jerónimos":"monum", "lisboa|Torre de Belém":"monum", "lisboa|Time Out Market":"exp", "lisboa|LX Factory":"bairro", "lisboa|Oceanário (Parque das Nações)":"museu", "lisboa|Noite (Pink Street / Ginjinha)":"exp", "lisboa|Museu Nacional do Azulejo":"museu", "lisboa|Museu Nacional de Arte Antiga":"museu", "lisboa|MAAT":"museu", "lisboa|Cascais / Estoril":"bate", "lisboa|Cabo da Roca":"bate", "lisboa|Óbidos":"bate", "lisboa|Setúbal / Arrábida":"bate"};
+const CATMETA = {museu:{ic:'🎨',nome:'Museus & arte'},monum:{ic:'🏛️',nome:'Monumentos & vistas'},parque:{ic:'🌳',nome:'Parques & jardins'},bairro:{ic:'🏘️',nome:'Bairros & mercados'},compras:{ic:'🛍️',nome:'Compras'},exp:{ic:'🍽️🌆',nome:'Experiências'},bate:{ic:'🚂',nome:'Bate-voltas'},gaudi:{ic:'⛪',nome:'Gaudí & modernismo'},douro:{ic:'🍷',nome:'Douro & Vinho do Porto'},ws:{ic:'🎟️',nome:'Web Summit'}};
+const ROTAS = {"marselha": {"label": "Com Marseille", "DIA": {"madri|Segovia": {"c": ["26/10"]}, "madri|Toledo (bate-volta)": {"c": ["26/10"]}, "madri|Palácio Real": {"c": ["27/10"]}, "madri|Catedral de la Almudena": {"c": ["27/10"]}, "madri|Museo Thyssen-Bornemisza": {"m": ["27/10"]}, "madri|Mercado de San Miguel": {}, "barcelona|Sagrada Família": {"c": ["28/10"]}, "barcelona|Park Güell": {"c": ["28/10"]}, "barcelona|Barri Gòtic (Catedral)": {"c": ["29/10"]}, "barcelona|Bunkers del Carmel (vista)": {"c": ["29/10"]}, "barcelona|El Born (Santa Maria del Mar)": {"c": ["29/10"]}, "barcelona|La Boqueria": {"c": ["29/10"]}, "barcelona|MNAC (Palau Nacional)": {"c": ["29/10"]}, "barcelona|Montjuïc (Castell / Font Màgica)": {"c": ["29/10"]}, "barcelona|Palau de la Música": {"c": ["29/10"]}, "barcelona|Museu Picasso": {"m": ["29/10"]}, "barcelona|Fundació Joan Miró": {"m": ["29/10"]}, "barcelona|Hospital de Sant Pau": {"m": ["28/10"]}, "barcelona|Montserrat": {"m": ["29/10"]}, "barcelona|Praia de Barceloneta": {"m": ["29/10"]}, "lisboa|Cascais / Estoril": {"c": ["13/11"]}, "lisboa|Cabo da Roca": {"c": ["13/11"]}, "marselha|Vieux-Port": {"c": ["30/10"]}, "marselha|MuCEM + Fort Saint-Jean": {"c": ["30/10"]}, "marselha|Le Panier": {"c": ["30/10"]}, "marselha|Cathédrale de la Major": {"c": ["30/10"]}, "marselha|Notre-Dame de la Garde": {"c": ["31/10"]}, "marselha|Palais Longchamp": {"c": ["31/10"]}, "marselha|Calanques (barco)": {}, "marselha|Cours Julien": {}, "marselha|Château d’If": {}, "marselha|Cassis": {}, "marselha|Aix-en-Provence": {}, "paris|Torre Eiffel": {"c": ["02/11"]}, "paris|Trocadéro": {"c": ["02/11"]}, "paris|Cruzeiro no Sena (embarque)": {"c": ["01/11"]}, "paris|Sainte-Chapelle (+ Conciergerie)": {"c": ["01/11"]}, "paris|Notre-Dame": {"c": ["01/11"]}, "paris|Quartier Latin": {"c": ["01/11"]}, "paris|Panthéon": {"c": ["01/11"]}, "paris|Cluny (Idade Média)": {"c": ["01/11"]}, "paris|Arco do Triunfo": {"c": ["01/11"]}, "paris|Champs-Élysées": {"c": ["01/11"]}, "paris|Marais (Place des Vosges)": {"c": ["01/11"]}, "paris|Opéra Garnier": {"c": ["02/11"]}, "paris|Louvre": {"c": ["02/11"]}, "paris|Jardin des Tuileries": {"m": ["02/11"]}, "paris|Disneyland Paris": {"c": ["03/11"]}, "paris|Versailles": {"c": ["04/11"]}, "paris|Montmartre + Sacré-Cœur": {"c": ["04/11"]}, "paris|Musée d’Orsay": {"c": ["04/11"]}, "paris|Musée Rodin": {"m": ["04/11"]}, "paris|Museu Picasso": {}, "paris|Marmottan Monet": {}, "paris|Les Invalides (Napoleão)": {}, "paris|Moulin Rouge": {}, "paris|Catacumbas": {}, "paris|Orangerie (Nenúfares)": {}, "paris|Saint-Germain-des-Prés": {}, "paris|Île Saint-Louis": {}, "paris|Jardin du Luxembourg": {}, "paris|Piquenique no Champ de Mars": {"c": ["02/11"]}, "barcelona|Casa Batlló": {}, "porto|Ribeira": {"c": ["05/11", "07/11"]}, "porto|Ponte D. Luís I": {"c": ["05/11", "07/11"]}, "porto|Miradouro Serra do Pilar": {"c": ["05/11", "07/11"]}, "porto|Francesinha / jantar Cais da Ribeira": {"c": ["05/11"]}, "porto|Linha do Douro → Pinhão": {"c": ["06/11"]}, "porto|Livraria Lello": {"c": ["07/11"]}, "porto|Estação São Bento": {"c": ["07/11"]}, "porto|Torre dos Clérigos": {"c": ["07/11"]}, "porto|Palácio da Bolsa": {"c": ["07/11"]}, "porto|Igreja de São Francisco": {"c": ["07/11"]}, "porto|Caves de Gaia (prova)": {"c": ["07/11"]}, "porto|Jardins do Palácio de Cristal": {"m": ["07/11"]}, "porto|Mercado do Bolhão": {"m": ["07/11"]}, "porto|Majestic Café": {"m": ["07/11"]}, "porto|WOW – World of Wine": {"m": ["07/11"]}}, "HORA": {"madri|Segovia": "dia inteiro (excursão Toledo + Segovia)", "madri|Toledo (bate-volta)": "dia inteiro (excursão Toledo + Segovia)", "madri|Palácio Real": "09:00–11:15 (27, pago)", "madri|Catedral de la Almudena": "09:00–11:15 (27, ao lado)", "madri|Museo Thyssen-Bornemisza": "27 manhã (opcional, pago)", "barcelona|Casa Batlló": "17:15–18:45", "barcelona|La Pedrera / Casa Milà": "17:45–19:30", "marselha|Vieux-Port": "15:00–18:30", "marselha|MuCEM + Fort Saint-Jean": "15:00–18:30", "marselha|Le Panier": "15:00–18:30", "marselha|Cathédrale de la Major": "15:00–18:30", "marselha|Notre-Dame de la Garde": "09:00–11:30", "marselha|Palais Longchamp": "16:00–18:00", "paris|Torre Eiffel": "16:00–20:00 (Champ de Mars ao entardecer; subir 🟠 ~18h)", "paris|Trocadéro": "16:00 (vista frontal, a caminho do Champ de Mars)", "paris|Piquenique no Champ de Mars": "16:00–20:00 (à luz do dia → anoitecer)", "paris|Cruzeiro no Sena (embarque)": "17:30–19:30 (jantar; torre acende + cintila)", "paris|Sainte-Chapelle (+ Conciergerie)": "09:30–11:00", "paris|Notre-Dame": "09:30–11:00", "paris|Quartier Latin": "11:15–13:00", "paris|Panthéon": "11:15–13:00", "paris|Cluny (Idade Média)": "11:15–13:00", "paris|Arco do Triunfo": "15:00–16:30", "paris|Champs-Élysées": "15:00–16:30", "paris|Marais (Place des Vosges)": "17:00–18:30", "paris|Opéra Garnier": "14:00–15:00", "paris|Louvre": "09:00–13:00", "paris|Versailles": "09:30–13:00", "paris|Montmartre + Sacré-Cœur": "15:00–16:30", "paris|Musée d’Orsay": "17:00–18:30", "porto|Ribeira": "19:00–21:00 (noite) · 14:00–16:00 (dia 07)", "porto|Ponte D. Luís I": "19:00–21:00 (noite) · 16:00–17:15 (dia 07)", "porto|Miradouro Serra do Pilar": "19:00–21:00 (iluminada) · ~17:20 pôr do sol (07)", "porto|Francesinha / jantar Cais da Ribeira": "21:00", "porto|Linha do Douro → Pinhão": "07:30–19:05 (dia inteiro)", "porto|Livraria Lello": "09:30–13:00", "porto|Estação São Bento": "09:30–13:00", "porto|Torre dos Clérigos": "09:30–13:00", "porto|Palácio da Bolsa": "14:00–16:00", "porto|Igreja de São Francisco": "14:00–16:00", "porto|Caves de Gaia (prova)": "16:00–17:15"}}};
+const DAYS=['23/10','24/10','25/10','26/10','27/10','28/10','29/10','30/10','31/10','01/11','02/11','03/11','04/11','05/11','06/11','07/11','08/11','09/11','10/11','11/11','12/11','13/11','14/11','15/11'];
+
+// ===== ESTAÇÕES DE TREM RESERVADAS (pin ferroviário; aparecem/somem por dia+hora) =====
+const STATIONS = [
+  [40.4065,-3.6895,'Madrid–Puerta de Atocha','27/10','13:57','🚄 <b>AVE 03141</b> — Madrid → Barcelona<br>Partida <b>13:57</b> → Barcelona-Sants 16:59<br>Reserva <b>R6CRBD</b> · Coach 8 · assentos 07A/07B · €64,60 casal (R$ 377)'],
+  [41.3791,2.1401,'Barcelona-Sants','27/10','16:59','🚄 <b>AVE 03141</b> — chegada de Madrid<br>Chega <b>16:59</b> (partiu 13:57) · Reserva <b>R6CRBD</b>'],
+  [41.3791,2.1401,'Barcelona-Sants','30/10','09:26','🚆 <b>TGV inOui 9708</b> — Barcelona → Marseille (via Narbonne)<br>Partida <b>09:26</b> · Coach 15 · assentos 558/559<br>Reserva <b>HLNL43</b> · €288 casal (R$ 1.682)'],
+  [43.1896,3.0043,'Narbonne (conexão)','30/10','11:38','🔄 <b>Conexão — 23 min</b><br>Chega <b>11:38</b> (TGV inOui 9708) → parte <b>12:01</b> (Intercités 4657) → Marseille<br>Reserva <b>HLNL43</b>'],
+  [43.3027,5.3803,'Marseille-Saint-Charles','30/10','14:44','🚆 <b>Intercités 4657</b> (1ª cl) — chegada de Narbonne<br>Chega <b>14:44</b> · Coach 1 "Club Four" · assentos 63/64<br>Reserva <b>HLNL43</b>'],
+  [43.3027,5.3803,'Marseille-Saint-Charles','31/10','19:03','🚄 <b>Frecciarossa 6148</b> — Marseille → Paris<br>Partida <b>19:03</b> → Paris-Gare-de-Lyon 22:28<br>PNR <b>AAZE2N</b> · Coach 7 · assentos 4A/4B · €90 casal (R$ 526)'],
+  [48.8443,2.3739,'Paris-Gare-de-Lyon','31/10','22:28','🚄 <b>Frecciarossa 6148</b> — chegada de Marseille<br>Chega <b>22:28</b> (partiu 19:03) · PNR <b>AAZE2N</b>'],
+];
+// ===== AEROPORTOS (pin ✈️; aparecem/somem por dia+hora, como as estações) =====
+const AIRPORTS = [
+  [-29.9939,-51.1714,'Porto Alegre — Salgado Filho (POA)','23/10','15:30','✈️ <b>Azul 2727</b> — POA → Viracopos<br>Partida <b>15:30</b> → VCP 17:10 · início da viagem (ida)'],
+  [-23.0074,-47.1345,'Campinas — Viracopos (VCP)','23/10','17:10','🔄 <b>Conexão</b> — chega <b>17:10</b> (Azul 2727)<br>→ parte <b>20:05</b> (Azul 8754) p/ Madrid-Barajas'],
+  [40.4936,-3.5668,'Madrid — Barajas (MAD)','24/10','11:20','✈️ <b>Azul 8754</b> — chegada de Viracopos<br>Chega <b>11:20</b> · entrada na Europa 🇪🇺 (imigração Schengen)'],
+  [48.7233,2.3794,'Paris — Orly (ORY)','05/11','16:35','✈️ <b>easyJet EJU6852</b> — Paris → Porto<br>Partida <b>16:35</b> → Porto 17:50 · loc. <b>KD1NM19</b> · assentos 21E/21F'],
+  [41.2481,-8.6814,'Porto — Sá Carneiro (OPO)','05/11','17:50','✈️ <b>easyJet EJU6852</b> — chegada de Orly<br>Chega <b>17:50</b> · loc. <b>KD1NM19</b> · à noite → Ribeira iluminada'],
+  [38.7756,-9.1354,'Lisboa — Humberto Delgado (LIS)','14/11','23:30','✈️ <b>Gol 7021</b> — Lisboa → Rio-Galeão<br>Partida <b>23:30</b> → GIG 15/11 06:30 · início da volta'],
+  [-22.8092,-43.2506,'Rio — Galeão (GIG)','15/11','06:30','🔄 <b>Conexão</b> — chega <b>06:30</b> (Gol 7021)<br>→ parte <b>09:30</b> (Gol 2086) p/ Porto Alegre'],
+  [-29.9939,-51.1714,'Porto Alegre — Salgado Filho (POA)','15/11','11:40','✈️ <b>Gol 2086</b> — chegada de Galeão<br>Chega <b>11:40</b> · fim da viagem 🏁'],
+];
+// ===== HOTÉIS RESERVADOS (pin fixo — SEMPRE visível, ignora filtros) =====
+// [lat,lng,nome,head,txt, diaChegada, horaMalas, diaCheckout, horaRetorno]
+const HOTELS = [
+  [40.4249,-3.7066,'Hostal Rías Bajas','✅ RESERVADO — Madrid · 3 noites (24→27/10)',
+   'San Bernardo 35, 1º-Izda · 28015 Madrid<br>☎️ +34 600 63 63 32 · conf. <b>6103.280.036</b> · PIN 6185<br>Quarto Duplo Superior, cama de casal · <b>€359,15 (R$ 2.097)</b><br>Check-in 14:30–23:30 · check-out até 11:30 · cancela grátis até 2 dias antes',
+   '24/10','11:30','27/10','23:00'],
+  [38.71093,-9.14017,'Castle View (Chiado)','✅ RESERVADO — Lisboa · 6 noites (08→14/11)',
+   'Rua Garrett 26, 5ºB · Chiado (Santa Maria Maior) 1200-309 · lic. 63960/AL<br>☎️ +351 936 425 446 · conf. <b>6432.407.748</b> · PIN 9797<br>Apê 1 quarto, 50 m², cama de casal · jacuzzi + varanda c/ vista castelo/rio · cozinha + lavadora + elevador<br><b>€1.016,48 (R$ ~5.930)</b> · pago via Revolut · ⚠️ NÃO reembolsável<br>Check-in 16:00–22:00 · check-out até 11:00 · 🧳 dia 14: guarda-malas LUGGit (Rua Garrett 09:20 → aeroporto 20:00)',
+   '08/11','15:15','14/11','23:00'],
+];
+
+/* ============================================================================
+   MAPA 3D — MapLibre GL JS (satélite Esri + relevo Terrarium)
+   ============================================================================ */
+const map = new maplibregl.Map({
+  container:'map',
+  center:[3,46], zoom:4.2, pitch:60, bearing:0, maxPitch:85,
+  style:{
+    version:8,
+    glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources:{
+      sat:{type:'raster', tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize:256, maxzoom:19, attribution:'Imagery © Esri, Maxar, Earthstar Geographics'},
+      terrain:{type:'raster-dem', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        encoding:'terrarium', tileSize:256, maxzoom:15, attribution:'Elevation: Mapzen/AWS Terrain Tiles'}
+    },
+    layers:[ {id:'sat', type:'raster', source:'sat'} ],
+    terrain:{source:'terrain', exaggeration:1.2},
+    sky:{}
+  },
+  maxZoom:19
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
+map.addControl(new maplibregl.ScaleControl({maxWidth:110, unit:'metric'}), 'bottom-left');
+// PRÉDIOS 3D: uma fonte vetorial global de "building" (extrusão) exigiria API key
+// (MapTiler / OpenMapTiles / Mapbox). Sem chave gratuita confiável → recurso PULADO no beta.
+
+map.on('load', ()=>{
+  // sky (céu atmosférico) — guardado: nem toda versão expõe setSky
+  try{ if(map.setSky) map.setSky({'sky-color':'#8fbcff','horizon-color':'#eaf3ff','fog-color':'#dfe9f5','sky-horizon-blend':0.6,'horizon-fog-blend':0.5,'fog-ground-blend':0.4}); }catch(e){}
+  ensureRoute();
+  buildAll();
+  applyFilter(); rebuildHoras();
+  map.resize();
+});
+map.on('error', e=>{ /* tiles DEM/sat podem falhar em algumas regiões; não travar */ });
+
+/* ---------- helpers de marcador/popup ---------- */
+const POP = new maplibregl.Popup({maxWidth:'760px', closeButton:true, closeOnClick:true, offset:14});
+let curRec=null;
+function openPopupFor(rec){
+  curRec=rec;
+  POP.setLngLat(rec.lnglat).setHTML(rec.mkPopup()).addTo(map);
+}
+function dotEl(color){
+  const d=document.createElement('div');
+  d.style.cssText='width:16px;height:16px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 0 0 1.5px #666;cursor:pointer';
+  return d;
+}
+function pinEl(emoji,bg){
+  const d=document.createElement('div');
+  d.style.cssText='width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;background:'+bg+';border:2px solid #fff;border-radius:7px;box-shadow:0 0 0 1.5px #444,0 1px 3px rgba(0,0,0,.45);cursor:pointer';
+  d.textContent=emoji; return d;
+}
+function showRec(rec){ if(!rec.onMap){ rec.marker.addTo(map); rec.onMap=true; } }
+function hideRec(rec){ if(rec.onMap){ rec.marker.remove(); rec.onMap=false; } }
+
+/* ---------- lógica dos dados (igual ao 2D) ---------- */
+function curRota(){ const e=document.getElementById('f_rota'); return e?e.value:'marselha'; }
+function effDia(cid,nome){ const k=cid+'|'+nome, o=ROTAS[curRota()].DIA; return (o&&o[k]!==undefined)?o[k]:DIA[k]; }
+function effHora(cid,nome){ const k=cid+'|'+nome, o=ROTAS[curRota()].HORA; return (o&&o[k]!==undefined)?o[k]:HORA[k]; }
+function parseHora(h){ if(!h) return null; const m=String(h).match(/(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null; }
+function fmtHora(min){ return String(Math.floor(min/60)).padStart(2,'0')+'h'+String(min%60).padStart(2,'0'); }
+function diaHtmlFor(cid,nome){ const dd=effDia(cid,nome), hh=effHora(cid,nome); let h='';
+  if(dd&&dd.c&&dd.c.length) h+=`<div style="font-size:12.5px"><b>📅 Certo:</b> ${dd.c.join(' · ')}</div>`;
+  const hasDay = !!(dd && ((dd.c&&dd.c.length)||(dd.m&&dd.m.length)));
+  const min = parseHora(hh);
+  if(hasDay && min===null) h+=`<div style="display:inline-block;background:#b8580a;color:#fff;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:700;margin:4px 0">⏰ SEM HORÁRIO${hh?' · '+hh:''}</div>`;
+  else if(hh) h+=`<div style="font-size:12.5px"><b>⏰ Horário:</b> ${hh}</div>`;
+  if(dd&&dd.m&&dd.m.length) h+=`<div style="font-size:12.5px;color:#b8580a"><b>📅 Talvez:</b> ${dd.m.join(' · ')}</div>`;
+  return h; }
+function inRota(cid,nome){ const r=curRota();
+  if(cid==='marselha') return r==='marselha';
+  return true; }
+
+/* ---------- construção dos marcadores ---------- */
+let markers=[], transitMarkers=[], hotelRecs=[];
+function buildAll(){
+  // POIs
+  markers = P.map(([lat,lng,nome,pri,cid,nota])=>{
+    const s = SRC[cid]||{};
+    const q = term(nome, cid);
+    const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    const cat = CAT[cid+'|'+nome]; const cm = CATMETA[cat];
+    const staticHtml = (PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img src="${PHOTO[nome]}" alt="" loading="lazy" style="width:100%;max-width:595px;height:220px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block"/></a>` : '')
+      + `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`
+      + (s.blog?` · <a href="${s.blog}" target="_blank">📝 Blog</a>`:'')
+      + (s.vid?` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`:'')
+      + (nota?`<div class="note">${nota}</div>`:'');
+    const mkPopup = ()=>`<div class="pri" style="background:${PRI[pri].color}">${PRI[pri].label}${cm?' · '+cm.ic+' '+cm.nome:''}</div><br><b>${nome}</b><br>`+diaHtmlFor(cid,nome)+staticHtml;
+    const el=dotEl(PRI[pri].color); el.title=nome;
+    const marker=new maplibregl.Marker({element:el, anchor:'center'}).setLngLat([lng,lat]);
+    const rec={marker, el, lnglat:[lng,lat], mkPopup, pri, cat, cid, nome, onMap:false, isPOI:true, type:'poi'};
+    el.addEventListener('click', ev=>{ ev.stopPropagation(); openPopupFor(rec); });
+    return rec;
+  });
+  // estações + aeroportos (trânsito)
+  const mkTransit = (arr, emoji, bg, headBg, headTxt)=> arr.map(([lat,lng,nome,d,h,txt])=>{
+    const min=parseHora(h);
+    const gm=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome.replace(/\s*\(.*\)/,''))}`;
+    const mkPopup=()=>`<div class="pri" style="background:${headBg}">${headTxt}</div><br><b>${nome}</b><br>`
+      +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
+      +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
+      +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
+    const el=pinEl(emoji,bg); el.title=emoji+' '+nome;
+    const marker=new maplibregl.Marker({element:el, anchor:'center'}).setLngLat([lng,lat]);
+    const rec={marker, el, lnglat:[lng,lat], mkPopup, d, h, min, nome, emoji, onMap:false, isPOI:false, type:(emoji==='✈️'?'air':'train')};
+    el.addEventListener('click', ev=>{ ev.stopPropagation(); openPopupFor(rec); });
+    return rec;
+  });
+  const stationRecs = mkTransit(STATIONS,'🚆','#1f6feb','#1f6feb','🚆 Estação · reserva confirmada');
+  const airportRecs = mkTransit(AIRPORTS,'✈️','#0d9488','#0d9488','✈️ Aeroporto · voo comprado');
+  transitMarkers = stationRecs.concat(airportRecs);
+  // hotéis (fixos)
+  hotelRecs = HOTELS.map(([lat,lng,nome,head,txt,arr,drop,checkout,ret])=>{
+    const gm=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    const mkPopup=()=>`<div class="pri" style="background:#8957e5">🏨 Hotel reservado</div><br><b>${nome}</b><br>`
+      +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
+      +`<div style="font-size:12.5px"><b>🧳 chegada ${arr} ${drop}</b> · 🌙 retorno todas as noites (~${ret})</div>`
+      +`<div style="font-size:12.5px;margin-top:3px">${txt}</div>`
+      +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div>`;
+    const el=pinEl('🏨','#8957e5'); el.title='🏨 '+nome;
+    const marker=new maplibregl.Marker({element:el, anchor:'center'}).setLngLat([lng,lat]);
+    const rec={marker, el, lnglat:[lng,lat], mkPopup, nome, arr, drop, dropMin:parseHora(drop), checkout, ret, retMin:parseHora(ret), onMap:false, isPOI:false, type:'poi'};
+    el.addEventListener('click', ev=>{ ev.stopPropagation(); openPopupFor(rec); });
+    marker.addTo(map); rec.onMap=true; // hotéis fixos, nunca somem por filtro
+    return rec;
+  });
+}
+
+/* ---------- filtros ---------- */
+const f_r=document.getElementById('f_r'), f_o=document.getElementById('f_o'), f_y=document.getElementById('f_y'), f_w=document.getElementById('f_w');
+function activePris(){ return {r:f_r.checked, o:f_o.checked, y:f_y.checked, w:f_w.checked}; }
+function applyFilter(){
+  const on = activePris(); const day=document.getElementById('f_dia').value; const catSel=document.getElementById('f_cat').value; let n=0;
+  markers.forEach(rec=>{
+    const dias = effDia(rec.cid,rec.nome);
+    const inDay = day==='all' || (!!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day)));
+    const show = inRota(rec.cid,rec.nome) && on[rec.pri] && inDay && (catSel==='all'||rec.cat===catSel);
+    if(show){ showRec(rec); n++; } else hideRec(rec);
+  });
+  transitMarkers.forEach(rec=>{ (day==='all' || rec.d===day) ? showRec(rec) : hideRec(rec); });
+  document.getElementById('count').textContent = day==='all' ? `${n} pontos no mapa` : `${n} ponto(s) no dia ${day}`;
+}
+function boundsFrom(lls){ // lls = [[lng,lat],...]
+  let w=180,s=90,e=-180,nn=-90;
+  lls.forEach(([lng,lat])=>{ if(lng<w)w=lng; if(lng>e)e=lng; if(lat<s)s=lat; if(lat>nn)nn=lat; });
+  return [[w,s],[e,nn]];
+}
+function cityLls(cid){ return markers.filter(r=>r.cid===cid && r.onMap).map(r=>r.lnglat); }
+function focusDayCity(){
+  const day=document.getElementById('f_dia').value;
+  if(day==='all') return;
+  const lls=[];
+  markers.forEach(r=>{ if(r.onMap) lls.push(r.lnglat); });
+  transitMarkers.forEach(r=>{ if(r.onMap) lls.push(r.lnglat); });
+  if(lls.length){
+    if(lls.length===1) map.flyTo({center:lls[0], zoom:13, pitch:Math.max(map.getPitch(),45)});
+    else map.fitBounds(boundsFrom(lls),{padding:60, maxZoom:13, pitch:Math.max(map.getPitch(),45), bearing:map.getBearing()});
+  } else map.flyTo({center:[3,46], zoom:4.2});
+}
+['f_r','f_o','f_y','f_w'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{applyFilter();rebuildHoras();}));
+
+/* ---------- dia ---------- */
+const _sel=document.getElementById('f_dia');
+_sel.innerHTML='<option value="all">Todos os dias</option>'+DAYS.map(d=>`<option value="${d}">${d}</option>`).join('');
+_sel.addEventListener('change',()=>{applyFilter();focusDayCity();rebuildHoras();});
+document.getElementById('dia_clear').onclick=()=>{_sel.value='all';applyFilter();rebuildHoras();};
+function stepDay(delta){
+  const cur=_sel.value;
+  let i = cur==='all' ? (delta>0?-1:DAYS.length) : DAYS.indexOf(cur);
+  i=Math.max(0,Math.min(DAYS.length-1,i+delta));
+  _sel.value=DAYS[i]; applyFilter(); focusDayCity(); rebuildHoras();
+}
+document.getElementById('dia_prev').onclick=()=>stepDay(-1);
+document.getElementById('dia_next').onclick=()=>stepDay(1);
+
+/* ---------- horário ---------- */
+let SLOTS=[];
+function slotsForDay(day){
+  if(day==='all') return [];
+  const on=activePris(); const catSel=document.getElementById('f_cat').value;
+  const arr=[];
+  markers.forEach(rec=>{
+    const dias=effDia(rec.cid,rec.nome);
+    const inDay = !!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day));
+    if(!inRota(rec.cid,rec.nome) || !on[rec.pri] || !inDay || !(catSel==='all'||rec.cat===catSel)) return;
+    const min=parseHora(effHora(rec.cid,rec.nome));
+    arr.push({rec, nome:rec.nome, min, label: min===null?'Sem Horário':fmtHora(min)});
+  });
+  transitMarkers.forEach(st=>{
+    if(st.d!==day) return;
+    arr.push({rec:st, nome:st.emoji+' '+st.nome, min:st.min, label: st.min===null?'Sem Horário':fmtHora(st.min)});
+  });
+  hotelRecs.forEach(ht=>{
+    const di=DAYS.indexOf(day), ai=DAYS.indexOf(ht.arr), ci=DAYS.indexOf(ht.checkout);
+    if(ht.arr===day) arr.push({rec:ht, nome:'🏨 '+ht.nome+' — deixar malas', min:ht.dropMin, label:fmtHora(ht.dropMin)});
+    if(di>=ai && di<ci)  arr.push({rec:ht, nome:'🏨 '+ht.nome+' — retornar p/ dormir', min:ht.retMin, label:fmtHora(ht.retMin)});
+  });
+  arr.sort((a,b)=>{
+    if(a.min===null&&b.min===null) return a.nome.localeCompare(b.nome);
+    if(a.min===null) return -1; if(b.min===null) return 1;
+    return a.min-b.min || a.nome.localeCompare(b.nome);
+  });
+  arr.forEach(x=> x.opt = x.label+' - '+x.nome);
+  return arr;
+}
+function rebuildHoras(){
+  const day=document.getElementById('f_dia').value, sel=document.getElementById('f_hora');
+  SLOTS=slotsForDay(day);
+  if(day==='all'||!SLOTS.length){
+    sel.innerHTML='<option value="">'+(day==='all'?'(escolha um dia)':'(nenhum item)')+'</option>';
+    sel.disabled=true; return;
+  }
+  sel.disabled=false;
+  sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
+}
+function baseOpen(i){
+  const x=SLOTS[i]; if(!x) return; const rec=x.rec;
+  if(rec.isPOI && !rec.onMap) return;
+  map.flyTo({center:rec.lnglat, zoom:Math.max(map.getZoom(),13), pitch:Math.max(map.getPitch(),45), duration:600});
+  setTimeout(()=>openPopupFor(rec), 300);
+}
+function stepHora(delta){
+  const selH=document.getElementById('f_hora'), selD=document.getElementById('f_dia');
+  if(selD.value==='all'){ stepDay(delta>0?1:-1); rebuildHoras(); if(SLOTS.length){ const ni=delta>0?0:SLOTS.length-1; selH.value=String(ni); openSlot(ni);} return; }
+  let i = selH.value===''? (delta>0?-1:SLOTS.length) : +selH.value;
+  i += delta;
+  if(i>=0 && i<SLOTS.length){ selH.value=String(i); openSlot(i); return; }
+  let di=DAYS.indexOf(selD.value), guard=0;
+  while(guard++<DAYS.length){
+    di += (delta>0?1:-1);
+    if(di<0||di>=DAYS.length) return;
+    selD.value=DAYS[di]; applyFilter(); focusDayCity(); rebuildHoras();
+    if(SLOTS.length){ const ni=delta>0?0:SLOTS.length-1; selH.value=String(ni); openSlot(ni); return; }
+  }
+}
+document.getElementById('f_hora').addEventListener('change',e=>{ if(e.target.value!=='') openSlot(+e.target.value); });
+document.getElementById('hora_prev').onclick=()=>stepHora(-1);
+document.getElementById('hora_next').onclick=()=>stepHora(1);
+
+/* ---------- categoria ---------- */
+const _cat=document.getElementById('f_cat');
+_cat.innerHTML='<option value="all">Todas as categorias</option>'+Object.entries(CATMETA).map(([k,v])=>`<option value="${k}">${v.ic} ${v.nome}</option>`).join('');
+_cat.addEventListener('change',()=>{applyFilter();rebuildHoras();});
+document.getElementById('cat_clear').onclick=()=>{_cat.value='all';applyFilter();rebuildHoras();};
+
+/* ---------- roteiro ---------- */
+const _rota=document.getElementById('f_rota');
+_rota.innerHTML=Object.entries(ROTAS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+function showCityBtn(c,r){ return (c!=='marselha'||r==='marselha'); }
+function onRotaChange(){ const r=curRota();
+  if(curRec) POP.remove();
+  document.querySelectorAll('.city[data-c]').forEach(b=>{ const c=b.dataset.c; b.style.display=(c==='all'||showCityBtn(c,r))?'':'none'; });
+  document.getElementById('f_dia').value='all'; applyFilter(); rebuildHoras();
+  if(map.loaded()) map.flyTo({center:[3,46],zoom:4.2});
+}
+_rota.addEventListener('change', onRotaChange);
+
+/* ---------- botões de cidade ---------- */
+document.querySelectorAll('.city[data-c]').forEach(b=>b.onclick=()=>{
+  const c=b.dataset.c;
+  if(c==='all'){ map.flyTo({center:[3,46], zoom:4.2, pitch:55}); return; }
+  const lls=cityLls(c);
+  if(lls.length>1) map.fitBounds(boundsFrom(lls),{padding:60, maxZoom:13, pitch:55, bearing:map.getBearing()});
+  else { const v=VIEWS[c]; map.flyTo({center:[v[1],v[0]], zoom:v[2], pitch:55}); }
+});
+
+/* ---------- relevo toggle ---------- */
+document.getElementById('f_terr').addEventListener('change', function(){
+  try{ map.setTerrain(this.checked ? {source:'terrain', exaggeration:1.2} : null); }catch(e){}
+});
+
+/* ============================================================================
+   ANIMAÇÃO DE TRAJETO (opcional) — arcos entre pontos consecutivos ao AVANÇAR
+   no horário, se "🎬 habilitar animação" (#f_anim) estiver marcado. Sem OSRM
+   (mantido leve p/ o beta): todos os modos usam arco great-circle aproximado.
+   ============================================================================ */
+const AST={
+  air:  {c:'#0d9488', e:'✈️', kmh:750, curv:.18, mz:6},
+  train:{c:'#7c3aed', e:'🚆', kmh:150, curv:.07, mz:8},
+  taxi: {c:'#f59e0b', e:'🚕', kmh:42,  curv:.05, mz:14},
+  walk: {c:'#16a34a', e:'🚶', kmh:5,   curv:.04, mz:16},
+  metro:{c:'#2563eb', e:'🚇', kmh:32,  curv:.05, mz:14},
+};
+let animToken=0, animMover=null, prevAnim=null, lastOrd=-1;
+function animOn(){ const c=document.getElementById('f_anim'); return !c || c.checked; }
+function ensureRoute(){
+  if(map.getSource('route')) return;
+  map.addSource('route',{type:'geojson', data:{type:'Feature',geometry:{type:'LineString',coordinates:[]}}});
+  map.addLayer({id:'route', type:'line', source:'route',
+    layout:{'line-cap':'round','line-join':'round'},
+    paint:{'line-color':'#7c3aed','line-width':4,'line-opacity':0.95}});
+}
+function setRoute(coords){ const s=map.getSource('route'); if(s) s.setData({type:'Feature',geometry:{type:'LineString',coordinates:coords}}); }
+function haversine(a,b){ const R=6371000, toR=Math.PI/180;
+  const dLat=(b[1]-a[1])*toR, dLng=(b[0]-a[0])*toR;
+  const s=Math.sin(dLat/2)**2+Math.cos(a[1]*toR)*Math.cos(b[1]*toR)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s)); }
+function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1],
+  cx=mx-dy*k, cy=my+dx*k, pts=[];
+  for(let i=0;i<=n;i++){ const t=i/n,u=1-t; pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); } return pts; }
+function pickMode(ta,tb,A,B){
+  if(ta==='air'&&tb==='air') return 'air';
+  if(ta==='air'||tb==='air') return 'taxi';
+  if(ta==='train'&&tb==='train') return 'train';
+  const d=haversine(A,B);
+  if(d<=1300) return 'walk';
+  if(d<=40000) return 'metro';
+  return 'train';
+}
+function fmtDur(min){ min=Math.round(min); const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
+function moverEl(st, txt){
+  const d=document.createElement('div');
+  d.innerHTML='<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px #000)">'+st.e+'</div>'
+    +'<div style="position:absolute;left:15px;top:-6px;white-space:nowrap;background:'+st.c+';color:#fff;padding:3px 9px;border-radius:11px;font:700 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.45)">'+txt+'</div>';
+  return d;
+}
+function clearAnim(){ animToken++;
+  if(animMover){ animMover.remove(); animMover=null; }
+  setRoute([]);
+}
+function animate(A,B,mode,openDst){
+  clearAnim(); const my=animToken, st=AST[mode];
+  const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60;
+  const air=(mode==='air');
+  try{ map.setPaintProperty('route','line-color',st.c);
+       map.setPaintProperty('route','line-dasharray', air?[2,2]:[1,0]); }catch(e){}
+  try{ map.fitBounds(boundsFrom(pts),{padding:70, maxZoom:st.mz, pitch:Math.max(map.getPitch(),40), bearing:map.getBearing(), duration:600}); }catch(e){}
+  const txt=st.e+' '+(km<10?km.toFixed(1):Math.round(km))+' km · ~'+fmtDur(min);
+  animMover=new maplibregl.Marker({element:moverEl(st,txt), anchor:'center'}).setLngLat(pts[0]).addTo(map);
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+haversine(pts[i-1],pts[i]));
+  const total=cum[cum.length-1]||1;
+  let durMs=Math.max(1600,Math.min(4200,Math.sqrt(km+3)*430)); if(!air) durMs+=800;
+  let t0=null;
+  function frame(ts){
+    if(my!==animToken) return;
+    if(t0===null) t0=ts;
+    const p=Math.min(1,(ts-t0)/durMs), target=p*total;
+    let i=1; while(i<cum.length && cum[i]<target) i++;
+    const seg=(target-cum[i-1])/((cum[i]-cum[i-1])||1), a=pts[i-1], b=pts[i]||pts[i-1];
+    const cur=[a[0]+(b[0]-a[0])*seg, a[1]+(b[1]-a[1])*seg];
+    if(animMover) animMover.setLngLat(cur);
+    setRoute(pts.slice(0,i).concat([cur]));
+    if(p<1){ requestAnimationFrame(frame); return; }
+    setRoute(pts);
+    if(openDst) openDst();
+    setTimeout(()=>{ if(my===animToken){ if(animMover){animMover.remove();animMover=null;} setRoute([]); } }, 3500);
+  }
+  setTimeout(()=>{ if(my===animToken) requestAnimationFrame(frame); }, air?0:800);
+}
+function openSlot(i){
+  let x=null, B=null, tb='poi', rec=null;
+  try{ x=SLOTS[i]; rec=x&&x.rec; if(rec){ B=rec.lnglat; tb=rec.type||'poi'; } }catch(e){}
+  let advancing=true;
+  try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
+  const cur={ll:B, type:tb};
+  let mode=null;
+  try{ if(animOn() && advancing && prevAnim && B && haversine(prevAnim.ll,B)>60) mode=pickMode(prevAnim.type,tb,prevAnim.ll,B); }catch(e){}
+  if(!mode){ clearAnim(); baseOpen(i); prevAnim=cur; return; }
+  POP.remove();
+  animate(prevAnim.ll, B, mode, ()=>{ try{ baseOpen(i); }catch(e){} });
+  prevAnim=cur;
+}
+
+// inicializa selects/estado da sidebar; a construção dos marcadores acontece no map load
+onRotaChange();
+window.addEventListener('resize',()=>map.resize());
+</script>
 </body>
 </html>
