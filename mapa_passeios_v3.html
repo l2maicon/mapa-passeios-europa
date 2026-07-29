@@ -32,14 +32,26 @@
   .pri{font-weight:700}
   .note{color:#b8580a;font-size:12px;margin-top:3px}
   /* InfoWindow (Google) styling */
-  .gmw{font-size:13px;line-height:1.45;max-width:340px}
+  .gmw{font-size:13px;line-height:1.45;width:300px;max-width:320px;max-height:68vh;overflow-y:auto;overflow-x:hidden}
   .gmw a{color:#1560d4}
-  .gmw .pribar{font-weight:700;color:#fff;border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:3px;font-size:12px}
-  .gmw img.ph{width:100%;height:190px;object-fit:cover;border-radius:7px;margin:7px 0;background:#eee;display:block}
+  .gmw .pribar{font-weight:700;color:#fff;border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px;font-size:12px}
+  .gmw img.ph{width:100%;height:165px;object-fit:cover;border-radius:8px;margin:0 0 6px;background:#eee;display:block}
+  .gmw #ghero:empty{display:none}
   .gmw .grow{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:4px}
   .gmw .stars{color:#f4b400;font-weight:700}
   .gmw .gsrc{font-size:11px;color:#4285f4;font-weight:700;margin-top:6px}
-  .gmw .loadg{font-size:11px;opacity:.6}
+  .gmw .loadg{font-size:11px;opacity:.6;margin-top:4px}
+  .gmw .links{margin-top:7px;font-size:12.5px}
+  /* carrossel de imagens */
+  .gmw .cwrap{position:relative;margin:0 0 6px;line-height:0}
+  .gmw .cwrap img.ph{margin:0}
+  .gmw .cwar{position:absolute;top:50%;transform:translateY(-50%);width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.48);color:#fff;font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
+  .gmw .cwar:hover{background:rgba(0,0,0,.72)}
+  .gmw .cwl{left:6px}
+  .gmw .cwr{right:6px}
+  .gmw .cwdots{position:absolute;bottom:7px;left:0;right:0;display:flex;justify-content:center;gap:5px;z-index:2}
+  .gmw .cwdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.55);cursor:pointer;box-shadow:0 0 2px rgba(0,0,0,.5)}
+  .gmw .cwdot.on{background:#fff}
 </style>
 </head>
 <body>
@@ -91,10 +103,11 @@
   </div>
   <div class="grp">
     <b>🗺️ Camadas / opções</b>
-    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_sat"> 🛰️ satélite</label>
+    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_sat" checked> 🛰️ satélite</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_transit"> 🚇 transporte público</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_traffic"> 🚗 trânsito</label>
-    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt"> 🧭 inclinação 45° (3D)</label>
+    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt" checked> 🧭 inclinação 45° (3D)</label>
+    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_anim" checked> 🎬 animar trajeto (setas)</label>
     <a href="mapa_passeios.html" onclick="if(history.length>1){history.back()}else{location.href='index.html'}return false" style="display:block;margin-top:9px;text-align:center;background:#2d2d44;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">← Voltar ao mapa 2D</a>
     <span class="hint">base = Google Maps · pins = lugares reais do Google (Place)</span>
   </div>
@@ -471,7 +484,7 @@ async function initMap(){
   // projeto (fica UNINITIALIZED/cinza) — p/ 3D vetorial + AdvancedMarkers seria preciso
   // criar um Map ID vetorial próprio no Google Cloud. Raster renderiza sempre.
   map = new core.Map(document.getElementById('map'), {
-    center:{lat:46,lng:3}, zoom:5, mapTypeId:'roadmap',
+    center:{lat:46,lng:3}, zoom:5, mapTypeId:'hybrid',
     mapTypeControl:true, streetViewControl:true, fullscreenControl:true,
     tilt:0, gestureHandling:'greedy', rotateControl:true,
   });
@@ -483,6 +496,9 @@ async function initMap(){
   onRotaChange();
   applyFilter();
   rebuildHoras();
+  // abre já em satélite 3D: híbrido + inclinação 45° (os toggles nascem marcados no HTML)
+  tilted = true;
+  try{ map.setTilt(45); }catch(e){}
 }
 window.initMap = initMap;
 
@@ -568,62 +584,84 @@ function buildMarkers(){
 function baseHtml(entry){
   const {nome,pri,cm,q,s,nota} = entry;
   const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  const photo = PHOTO[nome] ? `<a href="${gmaps}" target="_blank"><img class="ph" src="${PHOTO[nome]}" alt="" loading="lazy"/></a>` : '';
   const links = `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`
     + (s.blog?` · <a href="${s.blog}" target="_blank">📝 Blog</a>`:'')
-    + (s.vid?` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`:'')
-    + (nota?`<div class="note">${nota}</div>`:'');
+    + (s.vid?` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`:'');
   return `<div class="gmw"><div class="pribar" style="background:${PRI[pri].color}">${PRI[pri].label}${cm?' · '+cm.ic+' '+cm.nome:''}</div>`
+    + `<div id="ghero"></div>`
     + `<b>${nome}</b><br>` + diaHtmlFor(entry.cid,nome)
-    + `<div id="gplace" class="loadg">🔎 buscando no Google…</div>`
-    + photo + links + `</div>`;
+    + `<div id="gmeta" class="loadg">🔎 buscando no Google…</div>`
+    + `<div class="links">${links}${nota?`<div class="note">${nota}</div>`:''}</div>`
+    + `</div>`;
 }
+/* ---------- carrossel de imagens do card ---------- */
+let CW = {urls:[], i:0, token:0};
+function cwRender(){
+  const host=document.getElementById('ghero'); if(!host) return;
+  const u=CW.urls;
+  if(!u.length){ host.innerHTML=''; return; }
+  if(CW.i>=u.length) CW.i=0;
+  const multi=u.length>1;
+  const arrows = multi ? '<button class="cwar cwl" title="anterior" onclick="cwGo(-1)">‹</button><button class="cwar cwr" title="próxima" onclick="cwGo(1)">›</button>' : '';
+  const dots = multi ? '<div class="cwdots">'+u.map((_,k)=>`<span class="cwdot${k===CW.i?' on':''}" onclick="cwSet(${k})"></span>`).join('')+'</div>' : '';
+  host.innerHTML = `<div class="cwrap"><img class="ph" src="${u[CW.i]}" alt="" loading="lazy"/>${arrows}${dots}</div>`;
+}
+function cwGo(d){ if(CW.urls.length<2) return; CW.i=(CW.i+d+CW.urls.length)%CW.urls.length; cwRender(); }
+function cwSet(i){ if(i<0||i>=CW.urls.length) return; CW.i=i; cwRender(); }
+window.cwGo=cwGo; window.cwSet=cwSet;
+
 let openToken=0;
 function openPOI(entry){
   const my=++openToken;
+  // carrossel começa só com a foto da Wikipédia (se houver); as do Google entram ao carregar
+  CW = {urls: PHOTO[entry.nome]?[PHOTO[entry.nome]]:[], i:0, token:my};
   iw.setContent(baseHtml(entry));
   iw.open({map, anchor:entry.marker});
+  google.maps.event.addListenerOnce(iw,'domready',()=>{ if(my===openToken) cwRender(); });
   loadGoogle(entry, my);
 }
 // resolve Place ID (uma vez), valida <400m, e injeta dados do Google no card
 async function loadGoogle(entry, my){
-  if(!PlaceLib || !PlaceLib.Place){ setGSlot(my,''); return; }
+  if(!PlaceLib || !PlaceLib.Place){ finishGoogle(my,'',[]); return; }
   try{
     let pid = PLACEID[entry.q];
     if(pid===undefined){
       pid = await resolvePlaceId(entry);
       PLACEID[entry.q] = pid; savePlaceIds();
     }
-    if(!pid){ setGSlot(my,''); return; }   // ficou por coordenada
+    if(!pid){ finishGoogle(my,'',[]); return; }   // ficou por coordenada
     const place = new PlaceLib.Place({id:pid});
     await place.fetchFields({fields:['displayName','rating','userRatingCount','photos','regularOpeningHours','googleMapsURI','formattedAddress','businessStatus']});
     if(my!==openToken) return;
-    let html='';
-    const nm = place.displayName || entry.nome;
+    // fotos do Google (até 5) → entram no carrossel na frente da Wikipédia
+    const gphotos=[];
     if(place.photos && place.photos.length){
-      const uri = place.photos[0].getURI({maxWidth:500,maxHeight:280});
-      html += `<a href="${place.googleMapsURI||'#'}" target="_blank"><img class="ph" src="${uri}" alt=""/></a>`;
+      place.photos.slice(0,5).forEach(p=>{ try{ gphotos.push(p.getURI({maxWidth:640,maxHeight:400})); }catch(e){} });
     }
+    let meta='';
     if(place.rating){
-      html += `<div class="grow"><span class="stars">★ ${place.rating.toFixed(1)}</span>`
+      meta += `<div class="grow"><span class="stars">★ ${place.rating.toFixed(1)}</span>`
            + (place.userRatingCount?`<span style="opacity:.7">(${place.userRatingCount.toLocaleString('pt-BR')})</span>`:'')+`</div>`;
     }
     const oh = place.regularOpeningHours;
     if(oh && oh.weekdayDescriptions && oh.weekdayDescriptions.length){
       const today = (new Date().getDay()+6)%7; // Google: Mon=0
-      html += `<div class="grow" style="align-items:flex-start"><span>🕒</span><span>${oh.weekdayDescriptions[today]||oh.weekdayDescriptions[0]}</span></div>`;
+      meta += `<div class="grow" style="align-items:flex-start"><span>🕒</span><span>${oh.weekdayDescriptions[today]||oh.weekdayDescriptions[0]}</span></div>`;
     }
-    if(place.formattedAddress) html += `<div style="font-size:11.5px;opacity:.7;margin-top:3px">${place.formattedAddress}</div>`;
-    html += `<div class="gsrc">✔︎ dados do Google · <a href="${place.googleMapsURI||'#'}" target="_blank">abrir ficha</a></div>`;
-    setGSlot(my, html, nm);
-  }catch(e){ console.warn('Google place falhou p/ '+entry.q, e); setGSlot(my,''); }
+    if(place.formattedAddress) meta += `<div style="font-size:11.5px;opacity:.7;margin-top:3px">${place.formattedAddress}</div>`;
+    meta += `<div class="gsrc">✔︎ dados do Google · <a href="${place.googleMapsURI||'#'}" target="_blank">abrir ficha</a></div>`;
+    finishGoogle(my, meta, gphotos);
+  }catch(e){ console.warn('Google place falhou p/ '+entry.q, e); finishGoogle(my,'',[]); }
 }
-function setGSlot(my, html, nm){
+// injeta metadados do Google + funde as fotos do Google no carrossel (dedup), sem fechar o card
+function finishGoogle(my, metaHtml, gphotos){
   if(my!==openToken) return;
-  const el = document.getElementById('gplace');
-  if(!el) return;
-  if(!html){ el.remove(); return; }
-  el.className=''; el.innerHTML=html;
+  if(gphotos && gphotos.length){
+    const merged = gphotos.concat(CW.urls).filter((u,k,a)=>u && a.indexOf(u)===k);
+    CW.urls = merged; CW.i = 0; cwRender();
+  }
+  const el = document.getElementById('gmeta');
+  if(el){ if(metaHtml){ el.className=''; el.innerHTML=metaHtml; } else { el.remove(); } }
 }
 async function resolvePlaceId(entry){
   try{
@@ -693,16 +731,16 @@ function slotsForDay(day){
     const inDay = !!dias && ((dias.c||[]).includes(day)||(dias.m||[]).includes(day));
     if(!inRota(e.cid,e.nome) || !on[e.pri] || !inDay || !(catSel==='all'||e.cat===catSel)) return;
     const min=parseHora(effHora(e.cid,e.nome));
-    arr.push({e:{m:e.m,nome:e.nome}, min, label: min===null?'Sem Horário':fmtHora(min)});
+    arr.push({e:{m:e.m,nome:e.nome}, min, label: min===null?'Sem Horário':fmtHora(min), type:'poi'});
   });
   transitMarkers.forEach(st=>{
     if(st.d!==day) return;
-    arr.push({e:{m:st.m,nome:st.emoji+' '+st.nome}, min:st.min, label: st.min===null?'Sem Horário':fmtHora(st.min)});
+    arr.push({e:{m:st.m,nome:st.emoji+' '+st.nome}, min:st.min, label: st.min===null?'Sem Horário':fmtHora(st.min), type: st.emoji==='✈️'?'air':'train'});
   });
   hotelMarkers.forEach(ht=>{
     const di=DAYS.indexOf(day), ai=DAYS.indexOf(ht.arr), ci=DAYS.indexOf(ht.checkout);
-    if(ht.arr===day) arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — deixar malas'}, min:ht.dropMin, label:fmtHora(ht.dropMin)});
-    if(di>=ai && di<ci)  arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — retornar p/ dormir'}, min:ht.retMin, label:fmtHora(ht.retMin)});
+    if(ht.arr===day) arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — deixar malas'}, min:ht.dropMin, label:fmtHora(ht.dropMin), type:'poi'});
+    if(di>=ai && di<ci)  arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — retornar p/ dormir'}, min:ht.retMin, label:fmtHora(ht.retMin), type:'poi'});
   });
   arr.sort((a,b)=>{
     if(a.min===null&&b.min===null) return a.e.nome.localeCompare(b.e.nome);
@@ -722,11 +760,22 @@ function rebuildHoras(){
   sel.disabled=false;
   sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
 }
+function baseOpenSlot(mk){ map.panTo(mk.getLatLng()); if(map.getZoom()<13) map.setZoom(13); mk.open(); }
 function openSlot(i){
   const x=SLOTS[i]; if(!x) return;
   const mk=x.e.m; if(!mk.onMap) return;
-  map.panTo(mk.getLatLng()); if(map.getZoom()<13) map.setZoom(13);
-  mk.open();
+  const ll=mk.getLatLng(); const Bp=[ll.lng, ll.lat];   // interno em [lng,lat] (igual ao v2)
+  const tb=x.type||'poi';
+  // só anima ao AVANÇAR (ordem dia*1000+slot cresce); retroceder/reabrir = sem animação
+  let advancing=true;
+  try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
+  const cur={ll:Bp, type:tb};
+  let mode=null;
+  try{ if(animOn() && advancing && prevAnim && prevAnim.ll && haversine(prevAnim.ll,Bp)>60) mode=pickMode(prevAnim.type,tb,prevAnim.ll,Bp); }catch(e){}
+  if(!mode){ clearAnim(); baseOpenSlot(mk); prevAnim=cur; return; }
+  iw.close();
+  animate(prevAnim.ll, Bp, mode, ()=>{ baseOpenSlot(mk); });
+  prevAnim=cur;
 }
 function stepHora(delta){
   const selH=document.getElementById('f_hora'), selD=document.getElementById('f_dia');
@@ -742,10 +791,133 @@ function stepHora(delta){
     if(SLOTS.length){ const ni=delta>0?0:SLOTS.length-1; selH.value=String(ni); openSlot(ni); return; }
   }
 }
+/* ============================================================================
+   ANIMAÇÃO DE TRAJETO — trajeto entre pontos consecutivos ao AVANÇAR o horário/dia
+   (setas), se "🎬 animar trajeto" (#f_anim) estiver marcado. Portado do v2 (MapLibre)
+   para o Google Maps: linha = google.maps.Polyline; rótulo = OverlayView.
+   • 🚕 táxi e 🚶 a pé → seguem as RUAS de verdade (OSRM routing.openstreetmap.de:
+     perfil foot p/ pedestre, car p/ táxi); km/tempo REAIS de routes[0].distance/.duration.
+     Falha de rede → linha reta + haversine.
+   • ✈️ aéreo, 🚆 trem, 🚇 metrô → arco great-circle aproximado.
+   Coordenadas internas em [lng,lat] (igual ao v2); convertidas p/ {lat,lng} no path.
+   ============================================================================ */
+const AST={
+  air:  {c:'#0d9488', e:'✈️', kmh:750, curv:.18, mz:6},
+  train:{c:'#7c3aed', e:'🚆', kmh:150, curv:.07, mz:8},
+  taxi: {c:'#f59e0b', e:'🚕', kmh:42,  curv:.05, mz:14},
+  walk: {c:'#16a34a', e:'🚶', kmh:5,   curv:.04, mz:16},
+  metro:{c:'#2563eb', e:'🚇', kmh:32,  curv:.05, mz:14},
+};
+let animToken=0, animMover=null, routeLine=null, prevAnim=null, lastOrd=-1;
+function animOn(){ const c=document.getElementById('f_anim'); return !c || c.checked; }
+function toLL(p){ return {lat:p[1], lng:p[0]}; }   // [lng,lat] → {lat,lng}
+function haversine(a,b){ const R=6371000, toR=Math.PI/180;
+  const dLat=(b[1]-a[1])*toR, dLng=(b[0]-a[0])*toR;
+  const s=Math.sin(dLat/2)**2+Math.cos(a[1]*toR)*Math.cos(b[1]*toR)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s)); }
+function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1],
+  cx=mx-dy*k, cy=my+dx*k, pts=[];
+  for(let i=0;i<=n;i++){ const t=i/n,u=1-t; pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); } return pts; }
+function pickMode(ta,tb,A,B){
+  if(ta==='air'&&tb==='air') return 'air';
+  if(ta==='air'||tb==='air') return 'taxi';
+  if(ta==='train'&&tb==='train') return 'train';
+  const d=haversine(A,B);
+  if(d<=1300) return 'walk';
+  if(d<=40000) return 'metro';
+  return 'train';
+}
+function fmtDur(min){ min=Math.round(min); const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
+function ensureLine(){
+  if(routeLine) return;
+  routeLine=new google.maps.Polyline({map, path:[], strokeColor:'#7c3aed', strokeOpacity:.95, strokeWeight:4, zIndex:5, clickable:false});
+}
+function setLinePts(pts){ ensureLine(); routeLine.setPath(pts.map(toLL)); }
+function styleLine(mode){
+  ensureLine();
+  const st=AST[mode], air=(mode==='air');
+  const dash={path:'M 0,-1 0,1', strokeOpacity:1, scale:3};
+  routeLine.setOptions({ strokeColor:st.c,
+    strokeOpacity: air?0:0.95,
+    icons: air?[{icon:dash, offset:'0', repeat:'13px'}]:[] });
+}
+// rótulo que acompanha a cabeça da linha (emoji + pílula), via OverlayView
+function makeMover(pt, st, txt){
+  const ov=new google.maps.OverlayView();
+  const div=document.createElement('div');
+  div.style.cssText='position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:60';
+  div.innerHTML='<div style="position:relative;font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px #000)">'+st.e
+    +'<span style="position:absolute;left:17px;top:-4px;white-space:nowrap;background:'+st.c+';color:#fff;padding:3px 9px;border-radius:11px;font:700 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.45)">'+txt+'</span></div>';
+  ov.pos=new google.maps.LatLng(pt[1], pt[0]);
+  ov.onAdd=function(){ this.getPanes().floatPane.appendChild(div); };
+  ov.draw=function(){ const proj=this.getProjection(); if(!proj) return; const p=proj.fromLatLngToDivPixel(this.pos); if(p){ div.style.left=p.x+'px'; div.style.top=p.y+'px'; } };
+  ov.onRemove=function(){ if(div.parentNode) div.parentNode.removeChild(div); };
+  ov.setPt=function(pt){ this.pos=new google.maps.LatLng(pt[1], pt[0]); this.draw(); };
+  ov.setLabel=function(t){ const s=div.querySelector('span'); if(s) s.textContent=t; };
+  ov.setMap(map);
+  return ov;
+}
+function clearAnim(){ animToken++;
+  if(animMover){ animMover.setMap(null); animMover=null; }
+  if(routeLine){ routeLine.setPath([]); routeLine.setOptions({icons:[]}); }
+}
+// roteamento REAL de rua (só táxi e a pé). Devolve Promise<{pts,km,min}|null>. pts em [lng,lat]
+function fetchRoute(mode,A,B){
+  const prof = mode==='walk' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
+  const url = `https://routing.openstreetmap.de/${prof}/${A[0]},${A[1]};${B[0]},${B[1]}?overview=full&geometries=geojson`;
+  return fetch(url).then(r=>r.ok?r.json():null).then(j=>{
+    const rt = j && j.routes && j.routes[0];
+    const co = rt && rt.geometry && rt.geometry.coordinates;
+    if(co && co.length>1) return {pts:co, km:rt.distance/1000, min:rt.duration/60, real:true};
+    return null;
+  }).catch(()=>null);
+}
+function drawAnim(A,B,mode,pts,km,min,openDst,my){
+  if(my!==animToken) return;
+  const st=AST[mode], air=(mode==='air');
+  styleLine(mode);
+  try{ const b=new google.maps.LatLngBounds(); pts.forEach(p=>b.extend(toLL(p))); fitCapped(b, st.mz); }catch(e){}
+  const txt=st.e+' '+(km<10?km.toFixed(1):Math.round(km))+' km · ~'+fmtDur(min);
+  animMover=makeMover(pts[0], st, txt);
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+haversine(pts[i-1],pts[i]));
+  const total=cum[cum.length-1]||1;
+  let durMs=Math.max(1600,Math.min(4200,Math.sqrt(km+3)*430)); if(!air) durMs+=800;
+  let t0=null;
+  function frame(ts){
+    if(my!==animToken) return;
+    if(t0===null) t0=ts;
+    const p=Math.min(1,(ts-t0)/durMs), target=p*total;
+    let i=1; while(i<cum.length && cum[i]<target) i++;
+    const seg=(target-cum[i-1])/((cum[i]-cum[i-1])||1), a=pts[i-1], b=pts[i]||pts[i-1];
+    const cur=[a[0]+(b[0]-a[0])*seg, a[1]+(b[1]-a[1])*seg];
+    if(animMover) animMover.setPt(cur);
+    setLinePts(pts.slice(0,i).concat([cur]));
+    if(p<1){ requestAnimationFrame(frame); return; }
+    setLinePts(pts);
+    if(openDst) openDst();
+    setTimeout(()=>{ if(my===animToken){ if(animMover){animMover.setMap(null);animMover=null;} if(routeLine){routeLine.setPath([]);routeLine.setOptions({icons:[]});} } }, 3500);
+  }
+  setTimeout(()=>{ if(my===animToken) requestAnimationFrame(frame); }, air?0:800);
+}
+function animate(A,B,mode,openDst){
+  clearAnim(); const my=animToken, st=AST[mode];
+  const fallback=()=>{ const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60; drawAnim(A,B,mode,pts,km,min,openDst,my); };
+  if(mode==='taxi'||mode==='walk'){
+    fetchRoute(mode,A,B).then(res=>{
+      if(my!==animToken) return;
+      if(res) drawAnim(A,B,mode,res.pts,res.km,res.min,openDst,my);
+      else fallback();
+    });
+    return;
+  }
+  fallback();
+}
+
 function showCityBtn(c,r){ return (c!=='marselha'||r==='marselha'); }
 function onRotaChange(){ const r=curRota();
   document.querySelectorAll('.city[data-c]').forEach(b=>{ const c=b.dataset.c; b.style.display=(c==='all'||showCityBtn(c,r))?'':'none'; });
   document.getElementById('f_dia').value='all'; applyFilter(); rebuildHoras(); map.setCenter({lat:46,lng:3}); map.setZoom(5);
+  prevAnim=null; lastOrd=-1; clearAnim();
 }
 
 /* ---------- controles / listeners ---------- */
