@@ -772,10 +772,11 @@ function rebuildHoras(){
   sel.disabled=false;
   sel.innerHTML='<option value="">— horários do dia —</option>'+SLOTS.map((x,i)=>`<option value="${i}">${x.opt}</option>`).join('');
 }
-function baseOpenSlot(mk){
+function baseOpenSlot(mk, type){
   const ll=mk.getLatLng();   // wrapper devolve {lat,lng} como números (não funções)
-  const z = tilted ? 18.5 : 16;   // chega perto (satélite); tilt fica p/ o Map ID vetorial
-  flyTo({lat:ll.lat, lng:ll.lng, zoom:z, tilt:(tilted?45:0), ms:850}, ()=>mk.open());
+  const air = (type==='air');
+  const z = air ? 13 : (tilted ? 18.5 : 16);   // aeroporto: vista mais afastada; POI: perto (satélite)
+  flyTo({lat:ll.lat, lng:ll.lng, zoom:z, tilt:(air?0:(tilted?45:0)), ms:850}, ()=>mk.open());
 }
 function openSlot(i){
   const x=SLOTS[i]; if(!x) return;
@@ -789,9 +790,10 @@ function openSlot(i){
   let mode=null;
   try{ if(animOn() && advancing && prevAnim && prevAnim.ll && haversine(prevAnim.ll,Bp)>60) mode=pickMode(prevAnim.type,tb,prevAnim.ll,Bp); }catch(e){}
   if(mode && FORCE_WALK[((prevAnim&&prevAnim.nome)||'')+'→'+bn]) mode='walk';   // trecho a pé por decisão do roteiro
-  if(!mode){ clearAnim(); baseOpenSlot(mk); prevAnim=cur; return; }
+  if(!mode){ clearAnim(); baseOpenSlot(mk, tb); prevAnim=cur; return; }
+  const note = (mode==='metro'||mode==='train') ? (METRO_HINTS[((prevAnim&&prevAnim.nome)||'')+'→'+bn]||null) : null;
   iw.close();
-  animate(prevAnim.ll, Bp, mode, ()=>{ baseOpenSlot(mk); });
+  animate(prevAnim.ll, Bp, mode, ()=>{ baseOpenSlot(mk, tb); }, note);
   prevAnim=cur;
 }
 function stepHora(delta){
@@ -838,6 +840,32 @@ function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0
 // trechos que forçamos A PÉ mesmo à distância de metrô (o roteiro define caminhada) — chave "origem→destino"
 const FORCE_WALK = {
   'Parque del Retiro→Bairro das Grifes - Salamanca':1,   // Madrid: o Retiro é ATALHO até Serrano (a pé, sem metrô)
+};
+// dicas de linha/cor/estações p/ trechos de metrô/trem urbano documentados (chave "nomeOrigem→nomeDestino")
+const METRO_HINTS = {
+  // ===== Madrid =====
+  'Primark - Salamanca (Conde de Peñalver)→El Corte Inglés':'L2 🔴 Goya → Sol',
+  'El Corte Inglés→Primark - Salamanca (Conde de Peñalver)':'L2 🔴 Sol → Goya',
+  'La Latina→Museo Sorolla':'L5 🟢 La Latina → Rubén Darío',
+  'Museo Sorolla→La Latina':'L5 🟢 Rubén Darío → La Latina',
+  'Museo Thyssen-Bornemisza→Catedral de la Almudena':'L2 🔴 Banco de España → Ópera',
+  'Catedral de la Almudena→Museo Thyssen-Bornemisza':'L2 🔴 Ópera → Banco de España',
+  // ===== Barcelona =====
+  'La Pedrera / Casa Milà→Tapas + vermut (Carrer Blai)':'L3 🟢 Diagonal → Poble Sec',
+  'Tapas + vermut (Carrer Blai)→La Pedrera / Casa Milà':'L3 🟢 Poble Sec → Diagonal',
+  'Praia de Barceloneta→Barri Gòtic (Catedral)':'L4 🟡 Barceloneta → Jaume I',
+  'Barri Gòtic (Catedral)→Praia de Barceloneta':'L4 🟡 Jaume I → Barceloneta',
+  'Palau de la Música→MNAC (Palau Nacional)':'L1 🔴 Urquinaona → Espanya',
+  'MNAC (Palau Nacional)→Palau de la Música':'L1 🔴 Espanya → Urquinaona',
+  // ===== Paris =====
+  'Champs-Élysées→Marais (Place des Vosges)':'M1 🟡 Franklin D. Roosevelt → Saint-Paul',
+  'Marais (Place des Vosges)→Champs-Élysées':'M1 🟡 Saint-Paul → Franklin D. Roosevelt',
+  'Louvre→Opéra Garnier':'M7 🩷 Palais Royal → Opéra',
+  'Opéra Garnier→Louvre':'M7 🩷 Opéra → Palais Royal',
+  'Opéra Garnier→Piquenique no Champ de Mars':'M8 🟣 Opéra → École Militaire',
+  'Piquenique no Champ de Mars→Opéra Garnier':'M8 🟣 École Militaire → Opéra',
+  'Montmartre + Sacré-Cœur→Musée d’Orsay':'M12 🟢 Abbesses → Solférino',
+  'Musée d’Orsay→Montmartre + Sacré-Cœur':'M12 🟢 Solférino → Abbesses',
 };
 function pickMode(ta,tb,A,B){
   if(ta==='air'&&tb==='air') return 'air';
@@ -901,12 +929,13 @@ function styleLine(mode){
     icons: air?[{icon:dash, offset:'0', repeat:'13px'}]:[] });
 }
 // rótulo que acompanha a cabeça da linha (emoji + pílula), via OverlayView
-function makeMover(pt, st, txt){
+function makeMover(pt, st, txt, note){
   const ov=new google.maps.OverlayView();
   const div=document.createElement('div');
   div.style.cssText='position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:60';
+  const noteHtml = note ? '<br><span style="font-weight:600;font-size:10.5px;opacity:.97">'+note+'</span>' : '';
   div.innerHTML='<div style="position:relative;font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px #000)">'+st.e
-    +'<span style="position:absolute;left:17px;top:-4px;white-space:nowrap;background:'+st.c+';color:#fff;padding:3px 9px;border-radius:11px;font:700 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.45)">'+txt+'</span></div>';
+    +'<span style="position:absolute;left:17px;top:-4px;white-space:nowrap;background:'+st.c+';color:#fff;padding:3px 9px;border-radius:11px;font:700 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.45);line-height:1.35">'+txt+noteHtml+'</span></div>';
   ov.pos=new google.maps.LatLng(pt[1], pt[0]);
   ov.onAdd=function(){ this.getPanes().floatPane.appendChild(div); };
   ov.draw=function(){ const proj=this.getProjection(); if(!proj) return; const p=proj.fromLatLngToDivPixel(this.pos); if(p){ div.style.left=p.x+'px'; div.style.top=p.y+'px'; } };
@@ -931,12 +960,12 @@ function fetchRoute(mode,A,B){
     return null;
   }).catch(()=>null);
 }
-function drawAnim(A,B,mode,pts,km,min,openDst,my){
+function drawAnim(A,B,mode,pts,km,min,openDst,my,note){
   if(my!==animToken) return;
   const st=AST[mode], air=(mode==='air');
   styleLine(mode);
   const txt=st.e+' '+(km<10?km.toFixed(1):Math.round(km))+' km · ~'+fmtDur(min);
-  animMover=makeMover(pts[0], st, txt);
+  animMover=makeMover(pts[0], st, txt, note);
   setLinePts([pts[0]]);
   const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+haversine(pts[i-1],pts[i]));
   const total=cum[cum.length-1]||1;
@@ -961,13 +990,13 @@ function drawAnim(A,B,mode,pts,km,min,openDst,my){
   const fitZ=Math.min(zoomToFit(b,0.24), st.mz);
   flyTo({...centerOf(b), zoom:fitZ, tilt:0, ms:700}, ()=>{ if(my===animToken) requestAnimationFrame(frame); });
 }
-function animate(A,B,mode,openDst){
+function animate(A,B,mode,openDst,note){
   clearAnim(); const my=animToken, st=AST[mode];
-  const fallback=()=>{ const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60; drawAnim(A,B,mode,pts,km,min,openDst,my); };
+  const fallback=()=>{ const pts=arc(A,B,st.curv), km=haversine(A,B)/1000, min=km/st.kmh*60; drawAnim(A,B,mode,pts,km,min,openDst,my,note); };
   if(mode==='taxi'||mode==='walk'){
     fetchRoute(mode,A,B).then(res=>{
       if(my!==animToken) return;
-      if(res) drawAnim(A,B,mode,res.pts,res.km,res.min,openDst,my);
+      if(res) drawAnim(A,B,mode,res.pts,res.km,res.min,openDst,my,note);
       else fallback();
     });
     return;
