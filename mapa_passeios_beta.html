@@ -573,7 +573,7 @@ function buildMarkers(){
   hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt,arr,drop,checkout,ret])=>{
     const marker=new google.maps.Marker({map, position:{lat,lng}, icon:svgPin('🏨','#8957e5'), title:'🏨 '+nome, zIndex:200});
     const w=wrap(marker,lat,lng,null);
-    const gm=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    const gm = PLACE_URL[nome] || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome)}`;
     const html=`<div class="gmw"><div class="pribar" style="background:#8957e5">🏨 Hotel reservado</div><b>${nome}</b><br>`
       +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
       +`<div style="font-size:12.5px"><b>🧳 chegada ${arr} ${drop}</b> · 🌙 retorno todas as noites (~${ret})</div>`
@@ -585,11 +585,16 @@ function buildMarkers(){
   });
 }
 
+// links diretos p/ o lugar EXATO no Google Maps (override por NOME — vence o link por nome/coordenada).
+// Use o link "compartilhar" do próprio Google Maps (maps.app.goo.gl/...) p/ fixar a ficha certa.
+const PLACE_URL = {
+  'Hostal Rías Bajas': 'https://maps.app.goo.gl/UunLLhSequhw1Sbo7',   // hotel Madrid
+};
 /* ---------- InfoWindow POI: conteúdo base + dados do Google ---------- */
 function baseHtml(entry){
   const {nome,pri,cm,q,s,nota} = entry;
-  const gmaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  const links = `<a href="${gmaps}" target="_blank">📍 Google Maps</a>`
+  const gmaps = PLACE_URL[nome] || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  const links = `<a id="gmlink" href="${gmaps}" target="_blank">📍 Google Maps</a>`
     + (s.blog?` · <a href="${s.blog}" target="_blank">📝 Blog</a>`:'')
     + (s.vid?` · <a href="${s.vid}" target="_blank">🎥 Vídeo</a>`:'');
   return `<div class="gmw"><div class="pribar" style="background:${PRI[pri].color}">${PRI[pri].label}${cm?' · '+cm.ic+' '+cm.nome:''}</div>`
@@ -638,6 +643,8 @@ async function loadGoogle(entry, my){
     const place = new PlaceLib.Place({id:pid});
     await place.fetchFields({fields:['displayName','rating','userRatingCount','photos','regularOpeningHours','googleMapsURI','formattedAddress','businessStatus']});
     if(my!==openToken) return;
+    // "📍 Google Maps" passa a apontar pro lugar EXATO resolvido (salvo override manual em PLACE_URL)
+    if(!PLACE_URL[entry.nome] && place.googleMapsURI){ const a=document.getElementById('gmlink'); if(a) a.href=place.googleMapsURI; }
     // fotos do Google (até 5) → entram no carrossel na frente da Wikipédia
     const gphotos=[];
     if(place.photos && place.photos.length){
