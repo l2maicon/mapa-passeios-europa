@@ -97,9 +97,8 @@
     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;margin-top:4px">
       <input type="checkbox" id="f_sat" style="cursor:pointer;width:15px;height:15px"> 🛰️ imagens de satélite
     </label>
-    <a href="mapa_passeios_v2.html" style="display:block;margin-top:9px;text-align:center;background:#7c3aed;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">🧊 Abrir versão 3D (beta)</a>
-    <a href="mapa_passeios_v3.html" style="display:block;margin-top:7px;text-align:center;background:#34a853;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">🗺️ Versão Google Maps (v3)</a>
-    <span class="hint">satélite (Esri) sobre o mapa · o 3D abre o experimento v2</span>
+    <a href="mapa_passeios_beta.html" style="display:block;margin-top:9px;text-align:center;background:#34a853;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">🗺️ Abrir versão Beta (Google Maps)</a>
+    <span class="hint">satélite (Esri) sobre o mapa · a Beta usa o Google Maps (satélite/trânsito/lugares reais)</span>
   </div>
   <div id="count"></div>
 </header>
@@ -744,6 +743,10 @@ window.addEventListener('load',()=>map.invalidateSize());
   }
   function fmtDur(min){ min=Math.round(min); const h=Math.floor(min/60), m=min%60; return h?(h+'h'+(m?String(m).padStart(2,'0'):'')):(m+' min'); }
   function typeOf(nome){ if(nome.indexOf('✈️')>=0) return 'air'; if(nome.indexOf('🚆')>=0) return 'train'; return 'poi'; }
+  // trechos que forçamos A PÉ mesmo à distância de metrô (o roteiro define caminhada) — chave "origem→destino"
+  const FORCE_WALK = {
+    'Parque del Retiro→Bairro das Grifes - Salamanca':1,   // Madrid: o Retiro é ATALHO até Serrano (a pé, sem metrô)
+  };
   function pickMode(ta,tb,A,B){                            // infere o modo de deslocamento entre 2 pontos
     if(ta==='air'&&tb==='air') return 'air';
     if(ta==='air'||tb==='air') return 'taxi';             // transfer de/para aeroporto
@@ -820,6 +823,7 @@ window.addEventListener('load',()=>map.invalidateSize());
     const cur={ll:B, type:tb, nome:bn};
     let mode=null;
     if(animOn() && advancing && prev && B && map.distance(prev.ll,B)>60) mode=pickMode(prev.type,tb,prev.ll,B);
+    if(mode && FORCE_WALK[(prev.nome||'')+'→'+bn]) mode='walk';   // override: trecho a pé por decisão do roteiro
     if(!mode){ clearAnim(); _open(i); prev=cur; return; }  // desativado / voltando / 1º ponto: normal
     const note = mode==='metro' ? (METRO_HINTS[(prev.nome||'')+'→'+bn]||null) : null;
     map.closePopup();                                      // 1) fecha o popup atual

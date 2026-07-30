@@ -60,7 +60,7 @@
 </head>
 <body>
 <header>
-  <div class="ttl">🗺️ Passeios POA→Europa<br><span class="badge">v3 · Google Maps (beta)</span></div>
+  <div class="ttl">🗺️ Passeios POA→Europa<br><span class="badge">Beta · Google Maps</span></div>
   <div class="grp">
     <b>Prioridade</b>
     <label class="filt"><input type="checkbox" id="f_r" checked> 🔴 obrigatório</label>
@@ -112,7 +112,7 @@
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_traffic"> 🚗 trânsito</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt" checked> 🧭 inclinação 45° (3D)</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_anim" checked> 🎬 animar trajeto (setas)</label>
-    <a href="mapa_passeios.html" onclick="if(history.length>1){history.back()}else{location.href='index.html'}return false" style="display:block;margin-top:9px;text-align:center;background:#2d2d44;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">← Voltar ao mapa 2D</a>
+    <a href="index.html" onclick="if(history.length>1){history.back()}else{location.href='index.html'}return false" style="display:block;margin-top:9px;text-align:center;background:#2d2d44;color:#fff;padding:8px 10px;border-radius:10px;font-size:12.5px;font-weight:700;text-decoration:none">← Voltar ao mapa original</a>
     <span class="hint">base = Google Maps · pins = lugares reais do Google (Place)</span>
   </div>
   <div id="count"></div>
@@ -774,13 +774,14 @@ function openSlot(i){
   const x=SLOTS[i]; if(!x) return;
   const mk=x.e.m; if(!mk.onMap) return;
   const ll=mk.getLatLng(); const Bp=[ll.lng, ll.lat];   // interno em [lng,lat] (igual ao v2)
-  const tb=x.type||'poi';
+  const tb=x.type||'poi'; const bn=(x.e&&x.e.nome)||'';
   // só anima ao AVANÇAR (ordem dia*1000+slot cresce); retroceder/reabrir = sem animação
   let advancing=true;
   try{ const dv=document.getElementById('f_dia').value; const ord=DAYS.indexOf(dv)*1000+i; advancing=ord>lastOrd; lastOrd=ord; }catch(e){}
-  const cur={ll:Bp, type:tb};
+  const cur={ll:Bp, type:tb, nome:bn};
   let mode=null;
   try{ if(animOn() && advancing && prevAnim && prevAnim.ll && haversine(prevAnim.ll,Bp)>60) mode=pickMode(prevAnim.type,tb,prevAnim.ll,Bp); }catch(e){}
+  if(mode && FORCE_WALK[((prevAnim&&prevAnim.nome)||'')+'→'+bn]) mode='walk';   // trecho a pé por decisão do roteiro
   if(!mode){ clearAnim(); baseOpenSlot(mk); prevAnim=cur; return; }
   iw.close();
   animate(prevAnim.ll, Bp, mode, ()=>{ baseOpenSlot(mk); });
@@ -827,6 +828,10 @@ function haversine(a,b){ const R=6371000, toR=Math.PI/180;
 function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1],
   cx=mx-dy*k, cy=my+dx*k, pts=[];
   for(let i=0;i<=n;i++){ const t=i/n,u=1-t; pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]); } return pts; }
+// trechos que forçamos A PÉ mesmo à distância de metrô (o roteiro define caminhada) — chave "origem→destino"
+const FORCE_WALK = {
+  'Parque del Retiro→Bairro das Grifes - Salamanca':1,   // Madrid: o Retiro é ATALHO até Serrano (a pé, sem metrô)
+};
 function pickMode(ta,tb,A,B){
   if(ta==='air'&&tb==='air') return 'air';
   if(ta==='air'||tb==='air') return 'taxi';
