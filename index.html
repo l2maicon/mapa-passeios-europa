@@ -789,8 +789,8 @@ window.addEventListener('load',()=>map.invalidateSize());
     }catch(e){ return {pts:[a,b], min:null, km:null}; } }
   // objeto que se move na linha, com rótulo (modo + tempo) coladinho nele
   function moverIcon(st, txt){ return L.divIcon({className:'', iconSize:[0,0], iconAnchor:[0,0],
-    html:'<div style="font-size:44px;line-height:1;filter:drop-shadow(0 1px 2px #000);transform:translate(-50%,-50%)">'+st.emoji+'</div>'
-       +'<div style="position:absolute;left:26px;top:-18px;white-space:nowrap;background:'+st.color+';color:#fff;padding:6px 16px;border-radius:20px;font:700 24px system-ui,sans-serif;box-shadow:0 2px 7px rgba(0,0,0,.5)">'+txt+'</div>'}); }
+    html:'<div style="font-size:30px;line-height:1;filter:drop-shadow(0 1px 2px #000);transform:translate(-50%,-50%)">'+st.emoji+'</div>'
+       +'<div style="position:absolute;left:18px;top:-12px;white-space:nowrap;background:'+st.color+';color:#fff;padding:4px 11px;border-radius:14px;font:700 15px system-ui,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.5)">'+txt+'</div>'}); }
   function fadeOut(lyr,mvr){
     let op=0.95; const iv=setInterval(function(){ op-=0.09;
       if(op<=0){ clearInterval(iv); if(lyr) map.removeLayer(lyr); if(mvr) map.removeLayer(mvr); }

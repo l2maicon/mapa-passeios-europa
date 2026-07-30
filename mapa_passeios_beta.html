@@ -47,11 +47,14 @@
   /* InfoWindow (Google) styling */
   /* trava o container interno do InfoWindow do Google p/ o card não deslizar na horizontal */
   .gm-style-iw-d{overflow-x:hidden !important;}
-  .gm-style-iw-c{padding-top:12px !important}
+  .gm-style-iw-c{padding-top:6px !important}
   .gmw{font-size:13px;line-height:1.45;width:262px;max-width:262px;box-sizing:border-box}
+  .gmw.tw{width:300px;max-width:300px}   /* estação/aeroporto/hotel: mais largo p/ o nome */
   .gmw *{max-width:100%;box-sizing:border-box}
   .gmw a{color:#1560d4}
-  .gmw .pribar{font-weight:700;color:#fff;border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px;font-size:12px;white-space:normal}
+  /* rótulo colorido sozinho na 1ª linha (deixa a direita livre p/ o ✕); nome em bloco embaixo, largura cheia */
+  .gmw .pribar{font-weight:700;color:#fff;border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px;font-size:12px;white-space:normal;max-width:calc(100% - 36px)}
+  .gmw .pname{display:block;font-weight:700;font-size:14.5px;line-height:1.3;margin:1px 0 3px}
   .gmw img.ph{width:100%;height:165px;object-fit:cover;border-radius:8px;margin:0 0 6px;background:#eee;display:block}
   .gmw #ghero:empty{display:none}
   .gmw .grow{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:4px}
@@ -511,7 +514,7 @@ async function initMap(){
     tilt:0, gestureHandling:'greedy', rotateControl:true,
     isFractionalZoomEnabled:true,   // permite voo de câmera suave (zoom fracionário)
   });
-  iw = new google.maps.InfoWindow({maxWidth:300});
+  iw = new google.maps.InfoWindow({maxWidth:340});
   transitLayer = new google.maps.TransitLayer();
   trafficLayer = new google.maps.TrafficLayer();
   buildMarkers();
@@ -566,7 +569,7 @@ function buildMarkers(){
     const min=parseHora(h);
     const marker=new google.maps.Marker({map:null, position:{lat,lng}, icon:svgPin('🚆','#1f6feb'), title:'🚆 '+nome, zIndex:100});
     const w=wrap(marker,lat,lng,null);
-    const html=`<div class="gmw"><div class="pribar" style="background:#1f6feb">🚆 Estação · reserva confirmada</div><b>${nome}</b><br>`
+    const html=`<div class="gmw tw"><div class="pribar" style="background:#1f6feb">🚆 Estação · reserva confirmada</div><div class="pname">${nome}</div>`
       +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
       +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
       +`<div style="margin-top:6px"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome.replace(/\s*\(.*\)/,''))}" target="_blank">📍 Google Maps</a></div></div>`;
@@ -578,7 +581,7 @@ function buildMarkers(){
     const min=parseHora(h);
     const marker=new google.maps.Marker({map:null, position:{lat,lng}, icon:svgPin('✈️','#0d9488'), title:'✈️ '+nome, zIndex:100});
     const w=wrap(marker,lat,lng,null);
-    const html=`<div class="gmw"><div class="pribar" style="background:#0d9488">✈️ Aeroporto · voo comprado</div><b>${nome}</b><br>`
+    const html=`<div class="gmw tw"><div class="pribar" style="background:#0d9488">✈️ Aeroporto · voo comprado</div><div class="pname">${nome}</div>`
       +`<div style="font-size:12.5px"><b>📅 ${d}</b> &nbsp; <b>⏰ ${h}</b></div>`
       +`<div style="font-size:12.5px;margin-top:5px">${txt}</div>`
       +`<div style="margin-top:6px"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome.replace(/\s*\(.*\)/,''))}" target="_blank">📍 Google Maps</a></div></div>`;
@@ -592,7 +595,7 @@ function buildMarkers(){
     const marker=new google.maps.Marker({map, position:{lat,lng}, icon:svgPin('🏨','#8957e5'), title:'🏨 '+nome, zIndex:200});
     const w=wrap(marker,lat,lng,null);
     const gm = PLACE_URL[nome] || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome)}`;
-    const html=`<div class="gmw"><div class="pribar" style="background:#8957e5">🏨 Hotel reservado</div><b>${nome}</b><br>`
+    const html=`<div class="gmw tw"><div class="pribar" style="background:#8957e5">🏨 Hotel reservado</div><div class="pname">${nome}</div>`
       +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
       +`<div style="font-size:12.5px"><b>🧳 chegada ${arr} ${drop}</b> · 🌙 retorno todas as noites (~${ret})</div>`
       +`<div style="font-size:12.5px;margin-top:3px">${txt}</div>`
@@ -951,9 +954,9 @@ function makeMover(pt, st, txt, note){
   const ov=new google.maps.OverlayView();
   const div=document.createElement('div');
   div.style.cssText='position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:60';
-  const noteHtml = note ? '<br><span style="font-weight:600;font-size:21px;opacity:.97">'+note+'</span>' : '';
-  div.innerHTML='<div style="position:relative;font-size:44px;line-height:1;filter:drop-shadow(0 1px 2px #000)">'+st.e
-    +'<span style="position:absolute;left:32px;top:-8px;white-space:nowrap;background:'+st.c+';color:#fff;padding:6px 16px;border-radius:20px;font:700 24px system-ui,sans-serif;box-shadow:0 2px 7px rgba(0,0,0,.5);line-height:1.35">'+txt+noteHtml+'</span></div>';
+  const noteHtml = note ? '<br><span style="font-weight:600;font-size:13px;opacity:.97">'+note+'</span>' : '';
+  div.innerHTML='<div style="position:relative;font-size:30px;line-height:1;filter:drop-shadow(0 1px 2px #000)">'+st.e
+    +'<span style="position:absolute;left:22px;top:-6px;white-space:nowrap;background:'+st.c+';color:#fff;padding:4px 11px;border-radius:14px;font:700 15px system-ui,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.5);line-height:1.3">'+txt+noteHtml+'</span></div>';
   ov.pos=new google.maps.LatLng(pt[1], pt[0]);
   ov.onAdd=function(){ this.getPanes().floatPane.appendChild(div); };
   ov.draw=function(){ const proj=this.getProjection(); if(!proj) return; const p=proj.fromLatLngToDivPixel(this.pos); if(p){ div.style.left=p.x+'px'; div.style.top=p.y+'px'; } };
