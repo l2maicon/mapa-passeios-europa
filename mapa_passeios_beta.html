@@ -786,7 +786,8 @@ function slotsForDay(day){
   hotelMarkers.forEach(ht=>{
     const di=DAYS.indexOf(day), ai=DAYS.indexOf(ht.arr), ci=DAYS.indexOf(ht.checkout);
     if(ht.arr===day) arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — deixar malas'}, min:ht.dropMin, label:fmtHora(ht.dropMin), type:'poi'});
-    if(di>=ai && di<ci)  arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — retornar p/ dormir'}, min:ht.retMin, label:fmtHora(ht.retMin), type:'poi'});
+    if(di>=ai && di<ci && !(day===ht.arr && ht.dropMin!=null && ht.retMin!=null && Math.abs(ht.dropMin-ht.retMin)<=90))
+      arr.push({e:{m:ht.m,nome:'🏨 '+ht.nome+' — retornar p/ dormir'}, min:ht.retMin, label:fmtHora(ht.retMin), type:'poi'});  // pula "retornar" na noite de chegada se o largar-malas já foi noturno (evita slot duplicado)
   });
   arr.sort((a,b)=>{
     if(a.min===null&&b.min===null) return a.e.nome.localeCompare(b.e.nome);
