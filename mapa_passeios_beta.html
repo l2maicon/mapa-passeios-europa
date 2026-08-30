@@ -500,6 +500,9 @@ const HOTELS = [
   [48.8598,2.3471,'Hôtel des Ducs d\'Anjou','✅ RESERVADO — Paris · 5 noites (31/10→05/11)',
    '1 Rue Sainte-Opportune · 1er (75001) · Châtelet, Paris<br>Decolar · loc. <b>652233355100</b> · 🚨 pagar até 22/10/2026 21:00<br>Hôtel ★★★★ · quarto ~11 m² · nota 8,0 (1.378) · recepção 24h<br><b>~R$ 6.716</b> (Decolar)<br>🚄 chega 31/10 pelo Frecciarossa 6148 (Gare de Lyon 22:28) → hotel ~23:00<br>🚇 M14 100 m · RER A 250 m · Sena 200 m · Notre-Dame 600 m · Louvre 750 m',
    '31/10','23:00','05/11','23:00'],
+  [41.1493,-8.6116,'Vera Cruz Porto Downtown','🟡 ESCOLHIDO no estudo — ⚠️ AINDA NÃO RESERVADO · Porto · 3 noites (05→08/11)',
+   '<b>⚠️ Este é o hotel recomendado, mas a reserva NÃO foi feita.</b> Preço muda todo dia — reverificar antes de fechar.<br>Rua Ramalho Ortigão 14 · Baixa do Porto (planalto, 89 m)<br>★★★ · Limpeza 8,8 · Loc 9,7 (6.076 aval.) · elevador + recepção 24h + guarda-volumes<br><b>~R$ 1.361 all-in</b> (cotação de 17/08) · tarifa <b>“pague na acomodação”</b> = cancelável, quita no check-in em € (Nubank Conta Global/Revolut, IOF 0)<br>🚇 <b>Trindade e Bolhão a 5 min</b> — linha <b>E direta do aeroporto E de Campanhã</b> (zero baldeação: resolve a chegada do 05 e o trem do Douro do 06)<br>🚶 Lello 5 min · Clérigos 6 min · São Bento 5 min<br>✈️ chega 05/11 (easyJet pousa 17:50) → largar malas ~18:00',
+   '05/11','18:00','08/11','23:00'],
   [38.71093,-9.14017,'Castle View (Chiado)','✅ RESERVADO — Lisboa · 6 noites (08→14/11)',
    'Rua Garrett 26, 5ºB · Chiado (Santa Maria Maior) 1200-309 · lic. 63960/AL<br>☎️ +351 936 425 446 · conf. <b>6432.407.748</b> · PIN 9797<br>Apê 1 quarto, 50 m², cama de casal · jacuzzi + varanda c/ vista castelo/rio · cozinha + lavadora + elevador<br><b>€1.016,48 (R$ ~5.930)</b> · pago via Revolut · ⚠️ NÃO reembolsável<br>Check-in 16:00–22:00 · check-out até 11:00 · 🧳 dia 14: guarda-malas LUGGit (Rua Garrett 09:20 → aeroporto 20:00)',
    '08/11','15:15','14/11','23:00'],
@@ -612,11 +615,13 @@ function buildMarkers(){
   transitMarkers = stationEntries.concat(airportEntries);
   // hotéis (fixos)
   hotelMarkers = HOTELS.map(([lat,lng,nome,head,txt,arr,drop,checkout,ret])=>{
-    const marker=new google.maps.Marker({map, position:{lat,lng}, icon:svgPin('🏨','#8957e5'), title:'🏨 '+nome, zIndex:200});
+    const todo = head.startsWith('🟡');            // 🟡 no head = escolhido, mas AINDA NÃO reservado
+    const hc = todo ? '#d29922' : '#8957e5';
+    const marker=new google.maps.Marker({map, position:{lat,lng}, icon:svgPin('🏨',hc), title:'🏨 '+nome, zIndex:200});
     const w=wrap(marker,lat,lng,null);
     const gm = PLACE_URL[nome] || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nome)}`;
-    const html=`<div class="gmw tw"><div class="pribar" style="background:#8957e5">🏨 Hotel reservado</div><div class="pname">${nome}</div>`
-      +`<div style="font-size:12px;color:#8957e5;font-weight:700;margin:2px 0">${head}</div>`
+    const html=`<div class="gmw tw"><div class="pribar" style="background:${hc}">${todo?'🏨 Hotel escolhido — A RESERVAR':'🏨 Hotel reservado'}</div><div class="pname">${nome}</div>`
+      +`<div style="font-size:12px;color:${hc};font-weight:700;margin:2px 0">${head}</div>`
       +`<div style="font-size:12.5px"><b>🧳 chegada ${arr} ${drop}</b> · 🌙 retorno todas as noites (~${ret})</div>`
       +`<div style="font-size:12.5px;margin-top:3px">${txt}</div>`
       +`<div style="margin-top:6px"><a href="${gm}" target="_blank">📍 Google Maps</a></div></div>`;
