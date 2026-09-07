@@ -137,6 +137,7 @@
   <div class="grp">
     <b>🗺️ Camadas / opções</b>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_sat" checked> 🛰️ satélite</label>
+    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_poi" checked> 🙈 só os meus pins <span style="opacity:.65;font-weight:400">(esconde os do Google)</span></label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_transit"> 🚇 transporte público</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_traffic"> 🚗 trânsito</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt" checked> 🧭 inclinação 45° (3D)</label>
@@ -537,6 +538,24 @@ const PLACEID = JSON.parse(localStorage.getItem('v3_placeids')||'{}');
 function savePlaceIds(){ try{ localStorage.setItem('v3_placeids', JSON.stringify(PLACEID)); }catch(e){} }
 window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID; };
 
+/* ---------- "só os meus pins": apaga os rótulos/ícones de POI do Google, MANTÉM transporte ----------
+   featureType 'poi' cobre comércio, atrações, parques, escolas etc. Metrô/trem/ônibus/aeroporto ficam em
+   'transit.*' (fora do 'poi'), por isso continuam visíveis — e são reforçados com visibility:on.
+   Só 'labels' é desligado: a geometria (verde dos parques) permanece. clickableIcons acompanha, senão
+   sobram cliques fantasmas abrindo a ficha do Google por cima do nosso card. */
+const POI_OFF_STYLE = [
+  {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
+  {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
+];
+function applyPoiStyle(){
+  const el = document.getElementById('f_poi');
+  const hide = !!(el && el.checked);
+  map.setOptions({ styles: hide ? POI_OFF_STYLE : [], clickableIcons: !hide });
+}
+
 let map, iw, PlaceLib, spherical;
 let transitLayer, trafficLayer, tilted=false;
 
@@ -561,6 +580,7 @@ async function initMap(){
   trafficLayer = new google.maps.TrafficLayer();
   buildMarkers();
   buildControls();
+  applyPoiStyle();
   onRotaChange();
   applyFilter();
   rebuildHoras();
@@ -1122,6 +1142,7 @@ function buildControls(){
   });
   // camadas
   document.getElementById('f_sat').addEventListener('change',e=>{ map.setMapTypeId(e.target.checked?'hybrid':'roadmap'); });
+  document.getElementById('f_poi').addEventListener('change',applyPoiStyle);
   document.getElementById('f_transit').addEventListener('change',e=>{ transitLayer.setMap(e.target.checked?map:null); });
   document.getElementById('f_traffic').addEventListener('change',e=>{ trafficLayer.setMap(e.target.checked?map:null); });
   // ligar/desligar a animação muda a lista de horários (o retorno noturno ao hotel só existe com ela ligada)
