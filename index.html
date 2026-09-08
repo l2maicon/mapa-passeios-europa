@@ -538,11 +538,14 @@ const PLACEID = JSON.parse(localStorage.getItem('v3_placeids')||'{}');
 function savePlaceIds(){ try{ localStorage.setItem('v3_placeids', JSON.stringify(PLACEID)); }catch(e){} }
 window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID; };
 
-/* ---------- "só os meus pins": apaga os rótulos/ícones de POI do Google, MANTÉM transporte ----------
-   featureType 'poi' cobre comércio, atrações, parques, escolas etc. Metrô/trem/ônibus/aeroporto ficam em
-   'transit.*' (fora do 'poi'), por isso continuam visíveis — e são reforçados com visibility:on.
-   Só 'labels' é desligado: a geometria (verde dos parques) permanece. clickableIcons acompanha, senão
-   sobram cliques fantasmas abrindo a ficha do Google por cima do nosso card. */
+/* ---------- "só os meus pins": tira os POIs do Google, MANTÉM metrô/trem/ônibus/aeroporto ----------
+   Dois caminhos, porque o Google trata as bases de forma diferente:
+   · base MAPA (roadmap): basta `styles` — poi/labels off, transit/* forçado a on.
+   · base SATÉLITE: o híbrido IGNORA `styles` (testado ao vivo — os POIs continuavam lá). Solução: trocar
+     'hybrid' por 'satellite' puro (imagem sem nenhum rótulo) e reconstruir a camada de rótulos como
+     overlay estilizado — geometry off deixa o tile transparente, sobrando só ruas, nomes e transporte.
+   `_labelsWanted` lembra se o usuário quer rótulos sobre a imagem (o botão "Rótulos" do controle nativo do
+   Google alterna hybrid↔satellite); `_selfType` marca as trocas feitas por nós para não confundir com as dele. */
 const POI_OFF_STYLE = [
   {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
   {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
@@ -550,11 +553,40 @@ const POI_OFF_STYLE = [
   {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
   {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
 ];
-function applyPoiStyle(){
-  const el = document.getElementById('f_poi');
-  const hide = !!(el && el.checked);
-  map.setOptions({ styles: hide ? POI_OFF_STYLE : [], clickableIcons: !hide });
+const LABELS_ONLY_STYLE = [
+  {elementType:'geometry', stylers:[{visibility:'off'}]},          // tile transparente: a imagem aérea aparece
+  {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
+  {featureType:'road', elementType:'geometry', stylers:[{visibility:'on'}]},
+  {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
+  {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
+];
+let _labelsWanted = true, _selfType = null, _loOverlay = null;
+const isAerial = t => t==='hybrid' || t==='satellite';
+
+function setType(t){ if(map.getMapTypeId()!==t){ _selfType = t; map.setMapTypeId(t); } }
+function setLabelOverlay(on){
+  if(on && !_loOverlay){
+    _loOverlay = new google.maps.StyledMapType(LABELS_ONLY_STYLE, {name:'rótulos'});
+    map.overlayMapTypes.insertAt(0, _loOverlay);
+  } else if(!on && _loOverlay){
+    const i = map.overlayMapTypes.getArray().indexOf(_loOverlay);
+    if(i>=0) map.overlayMapTypes.removeAt(i);
+    _loOverlay = null;
+  }
 }
+function poiHidden(){ const el=document.getElementById('f_poi'); return !!(el && el.checked); }
+function applyPoiStyle(){
+  const hide = poiHidden();
+  map.setOptions({ styles: hide ? POI_OFF_STYLE : [], clickableIcons: !hide });
+  const aerial = isAerial(map.getMapTypeId());
+  const overlay = hide && aerial && _labelsWanted;   // só no satélite COM rótulos
+  if(aerial) setType(overlay ? 'satellite' : (_labelsWanted ? 'hybrid' : 'satellite'));
+  setLabelOverlay(overlay);
+}
+// base: satélite (aérea) x mapa (roadmap) — o checkbox 🛰️ e o controle nativo passam por aqui
+function setBase(sat){ _labelsWanted = true; setType(sat ? 'satellite' : 'roadmap'); applyPoiStyle(); }
 
 let map, iw, PlaceLib, spherical;
 let transitLayer, trafficLayer, tilted=false;
@@ -578,6 +610,14 @@ async function initMap(){
   iw = new google.maps.InfoWindow({maxWidth:340});
   transitLayer = new google.maps.TransitLayer();
   trafficLayer = new google.maps.TrafficLayer();
+  map.addListener('maptypeid_changed', ()=>{
+    const t = map.getMapTypeId();
+    if(_selfType === t){ _selfType = null; return; }   // troca nossa: não reinterpretar
+    _selfType = null;
+    if(t==='hybrid') _labelsWanted = true; else if(t==='satellite') _labelsWanted = false;
+    const sat = document.getElementById('f_sat'); if(sat) sat.checked = isAerial(t);
+    applyPoiStyle();
+  });
   buildMarkers();
   buildControls();
   applyPoiStyle();
@@ -1141,7 +1181,7 @@ function buildControls(){
     if(bb) fitCapped(bb,14); else { const v=VIEWS[c]; flyTo({lat:v[0],lng:v[1],zoom:v[2],tilt:0,ms:700}); }
   });
   // camadas
-  document.getElementById('f_sat').addEventListener('change',e=>{ map.setMapTypeId(e.target.checked?'hybrid':'roadmap'); });
+  document.getElementById('f_sat').addEventListener('change',e=>setBase(e.target.checked));
   document.getElementById('f_poi').addEventListener('change',applyPoiStyle);
   document.getElementById('f_transit').addEventListener('change',e=>{ transitLayer.setMap(e.target.checked?map:null); });
   document.getElementById('f_traffic').addEventListener('change',e=>{ trafficLayer.setMap(e.target.checked?map:null); });
@@ -1152,7 +1192,7 @@ function buildControls(){
     tilted=e.target.checked;
     const c=map.getCenter();
     if(tilted){
-      const sat=document.getElementById('f_sat'); if(sat && !sat.checked){ sat.checked=true; map.setMapTypeId('hybrid'); }
+      const sat=document.getElementById('f_sat'); if(sat && !sat.checked){ sat.checked=true; setBase(true); }
       flyTo({lat:c.lat(), lng:c.lng(), zoom:Math.max(map.getZoom(),18), tilt:45, ms:700});
     } else {
       flyTo({lat:c.lat(), lng:c.lng(), tilt:0, heading:0, ms:450});
