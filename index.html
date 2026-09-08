@@ -548,12 +548,13 @@ window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID
    Google alterna hybrid↔satellite); `_selfType` marca as trocas feitas por nós para não confundir com as dele.
    O toggle nasce DESLIGADO de propósito: inserir o overlay durante o boot trava o carregamento das tiles
    (tela em branco). Ligado depois, com o mapa já desenhado, funciona — e o pan/zoom seguinte também. */
+/* ⚠️ NÃO acrescente regras aqui sem testar ao vivo: com 'transit.station.airport' e 'transit.line' na
+   lista, os POIs VOLTAVAM a aparecer (medido em 07/09). Estas 3/5 regras são as que passaram no teste.
+   'transit.station' já cobre metrô, trem, ônibus e aeroporto. */
 const POI_OFF_STYLE = [
   {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
   {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
   {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
-  {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
-  {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
 ];
 const LABELS_ONLY_STYLE = [
   {elementType:'geometry', stylers:[{visibility:'off'}]},          // tile transparente: a imagem aérea aparece
@@ -561,8 +562,6 @@ const LABELS_ONLY_STYLE = [
   {featureType:'road', elementType:'geometry', stylers:[{visibility:'on'}]},
   {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
   {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
-  {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
-  {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
 ];
 let _labelsWanted = true, _selfType = null, _loOverlay = null, _ovTimer = null;
 const isAerial = t => t==='hybrid' || t==='satellite';
