@@ -584,14 +584,11 @@ function poiHidden(){ const el=document.getElementById('f_poi'); return !!(el &&
    Daí o 'tilesloaded' + um timeout de reserva, para o caso de as tiles já estarem prontas e o evento
    não disparar de novo. setLabelOverlay(true) é idempotente, então chamar as duas vezes é inofensivo. */
 function armLabelOverlay(){
+  if(_loOverlay) return;                 // já está lá
   clearTimeout(_ovTimer);
-  let tries = 0;
-  const tick = ()=>{
-    if(!(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted)) return;   // usuário mudou de ideia
-    const tiles = [...document.querySelectorAll('#map img')].filter(i=>i.complete && i.naturalWidth===256).length;
-    if(tiles >= 4 || ++tries > 30) setLabelOverlay(true); else _ovTimer = setTimeout(tick, 400);
-  };
-  _ovTimer = setTimeout(tick, 400);
+  _ovTimer = setTimeout(()=>{            // deixa a base aérea assumir antes de sobrepor os rótulos
+    if(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted) setLabelOverlay(true);
+  }, 900);
 }
 function applyPoiStyle(){
   const hide = poiHidden();
