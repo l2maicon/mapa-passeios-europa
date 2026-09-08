@@ -137,7 +137,7 @@
   <div class="grp">
     <b>🗺️ Camadas / opções</b>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_sat" checked> 🛰️ satélite</label>
-    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_poi" checked> 🙈 só os meus pins <span style="opacity:.65;font-weight:400">(esconde os do Google)</span></label>
+    <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_poi"> 🙈 só os meus pins <span style="opacity:.65;font-weight:400">(esconde os do Google)</span></label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_transit"> 🚇 transporte público</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_traffic"> 🚗 trânsito</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt" checked> 🧭 inclinação 45° (3D)</label>
@@ -545,7 +545,9 @@ window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID
      'hybrid' por 'satellite' puro (imagem sem nenhum rótulo) e reconstruir a camada de rótulos como
      overlay estilizado — geometry off deixa o tile transparente, sobrando só ruas, nomes e transporte.
    `_labelsWanted` lembra se o usuário quer rótulos sobre a imagem (o botão "Rótulos" do controle nativo do
-   Google alterna hybrid↔satellite); `_selfType` marca as trocas feitas por nós para não confundir com as dele. */
+   Google alterna hybrid↔satellite); `_selfType` marca as trocas feitas por nós para não confundir com as dele.
+   O toggle nasce DESLIGADO de propósito: inserir o overlay durante o boot trava o carregamento das tiles
+   (tela em branco). Ligado depois, com o mapa já desenhado, funciona — e o pan/zoom seguinte também. */
 const POI_OFF_STYLE = [
   {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
   {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
@@ -583,9 +585,13 @@ function poiHidden(){ const el=document.getElementById('f_poi'); return !!(el &&
    não disparar de novo. setLabelOverlay(true) é idempotente, então chamar as duas vezes é inofensivo. */
 function armLabelOverlay(){
   clearTimeout(_ovTimer);
-  const go = ()=>{ if(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted) setLabelOverlay(true); };
-  google.maps.event.addListenerOnce(map, 'tilesloaded', go);
-  _ovTimer = setTimeout(go, 2500);
+  let tries = 0;
+  const tick = ()=>{
+    if(!(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted)) return;   // usuário mudou de ideia
+    const tiles = [...document.querySelectorAll('#map img')].filter(i=>i.complete && i.naturalWidth===256).length;
+    if(tiles >= 4 || ++tries > 30) setLabelOverlay(true); else _ovTimer = setTimeout(tick, 400);
+  };
+  _ovTimer = setTimeout(tick, 400);
 }
 function applyPoiStyle(){
   const hide = poiHidden();
