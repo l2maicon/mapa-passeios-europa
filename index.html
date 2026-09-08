@@ -138,6 +138,7 @@
     <b>🗺️ Camadas / opções</b>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_sat" checked> 🛰️ satélite</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_poi"> 🙈 só os meus pins <span style="opacity:.65;font-weight:400">(esconde os do Google)</span></label>
+    <span class="hint" style="margin:-2px 0 6px">no <b>Mapa</b> some só os POIs (metrô e ruas ficam) · no <b>Satélite</b> o Google só faz tudo-ou-nada: cai na imagem pura, sem rótulo</span>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_transit"> 🚇 transporte público</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_traffic"> 🚗 trânsito</label>
     <label class="filt" style="width:100%;box-sizing:border-box"><input type="checkbox" id="f_tilt" checked> 🧭 inclinação 45° (3D)</label>
@@ -538,69 +539,33 @@ const PLACEID = JSON.parse(localStorage.getItem('v3_placeids')||'{}');
 function savePlaceIds(){ try{ localStorage.setItem('v3_placeids', JSON.stringify(PLACEID)); }catch(e){} }
 window.dumpPlaceIds = ()=>{ console.log(JSON.stringify(PLACEID)); return PLACEID; };
 
-/* ---------- "só os meus pins": tira os POIs do Google, MANTÉM metrô/trem/ônibus/aeroporto ----------
-   Dois caminhos, porque o Google trata as bases de forma diferente:
-   · base MAPA (roadmap): basta `styles` — poi/labels off, transit/* forçado a on.
-   · base SATÉLITE: o híbrido IGNORA `styles` (testado ao vivo — os POIs continuavam lá). Solução: trocar
-     'hybrid' por 'satellite' puro (imagem sem nenhum rótulo) e reconstruir a camada de rótulos como
-     overlay estilizado — geometry off deixa o tile transparente, sobrando só ruas, nomes e transporte.
-   `_labelsWanted` lembra se o usuário quer rótulos sobre a imagem (o botão "Rótulos" do controle nativo do
-   Google alterna hybrid↔satellite); `_selfType` marca as trocas feitas por nós para não confundir com as dele.
-   O toggle nasce DESLIGADO de propósito: inserir o overlay durante o boot trava o carregamento das tiles
-   (tela em branco). Ligado depois, com o mapa já desenhado, funciona — e o pan/zoom seguinte também. */
-/* ⚠️ NÃO acrescente regras aqui sem testar ao vivo: com 'transit.station.airport' e 'transit.line' na
-   lista, os POIs VOLTAVAM a aparecer (medido em 07/09). Estas 3/5 regras são as que passaram no teste.
-   'transit.station' já cobre metrô, trem, ônibus e aeroporto. */
+/* ---------- "só os meus pins" — só com o que a API do Google Maps oferece, sem camada extra ----------
+   O que a API realmente permite:
+   · base MAPA (roadmap): o array `styles` funciona → dá para apagar SÓ os POIs e manter o transporte.
+   · base SATÉLITE: `styles` é IGNORADO. O Google só oferece dois estados prontos —
+       'hybrid'    = imagem + todos os rótulos (POIs inclusive)
+       'satellite' = imagem pura, sem rótulo nenhum
+     Não existe, sem um Map ID vetorial próprio no Google Cloud, um satélite "com metrô e sem POI".
+   Então o toggle faz o máximo nativo de cada base: no mapa, esconde os POIs e mantém metrô/trem/ônibus;
+   no satélite, cai para a imagem pura. (Tentei um StyledMapType sobreposto para ter o meio-termo: pintava
+   as ruas de branco opaco e travava as tiles. Removido em 08/09 a pedido do usuário — sem gambiarra.) */
 const POI_OFF_STYLE = [
   {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
   {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
   {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
 ];
-/* Nada de geometria aqui — nem a de rua. Religar 'road/geometry' faz o overlay pintar as vias com o
-   traço BRANCO E OPACO do roadmap, muito mais grosso que o do híbrido, e o satélite some embaixo
-   (reclamação do usuário em 08/09). Só rótulos: nomes de rua, bairro e transporte sobre a imagem. */
-const LABELS_ONLY_STYLE = [
-  {elementType:'geometry', stylers:[{visibility:'off'}]},          // tile transparente: a imagem aérea aparece
-  {featureType:'poi', elementType:'labels', stylers:[{visibility:'off'}]},
-  {featureType:'transit', elementType:'labels', stylers:[{visibility:'on'}]},
-  {featureType:'transit.station', elementType:'labels', stylers:[{visibility:'on'}]},
-];
-let _labelsWanted = true, _selfType = null, _loOverlay = null, _ovTimer = null;
+// ⚠️ não acrescente regras acima sem testar ao vivo: com 'transit.station.airport' e 'transit.line' na
+// lista os POIs VOLTAVAM a aparecer (medido em 07/09). 'transit.station' já cobre metrô, trem, ônibus e aeroporto.
 const isAerial = t => t==='hybrid' || t==='satellite';
-
-function setType(t){ if(map.getMapTypeId()!==t){ _selfType = t; map.setMapTypeId(t); } }
-function setLabelOverlay(on){
-  if(on && !_loOverlay){
-    _loOverlay = new google.maps.StyledMapType(LABELS_ONLY_STYLE, {name:'rótulos'});
-    map.overlayMapTypes.insertAt(0, _loOverlay);
-  } else if(!on && _loOverlay){
-    const i = map.overlayMapTypes.getArray().indexOf(_loOverlay);
-    if(i>=0) map.overlayMapTypes.removeAt(i);
-    _loOverlay = null;
-  }
-}
 function poiHidden(){ const el=document.getElementById('f_poi'); return !!(el && el.checked); }
-/* O overlay SÓ pode entrar com a imagem aérea já carregada: inserido antes, ele impede o carregamento
-   das tiles de satélite e a tela fica branca (comprovado ao vivo em 07/09 — na init e a cada troca de base).
-   Daí o 'tilesloaded' + um timeout de reserva, para o caso de as tiles já estarem prontas e o evento
-   não disparar de novo. setLabelOverlay(true) é idempotente, então chamar as duas vezes é inofensivo. */
-function armLabelOverlay(){
-  if(_loOverlay) return;                 // já está lá
-  clearTimeout(_ovTimer);
-  _ovTimer = setTimeout(()=>{            // deixa a base aérea assumir antes de sobrepor os rótulos
-    if(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted) setLabelOverlay(true);
-  }, 900);
-}
 function applyPoiStyle(){
   const hide = poiHidden();
   map.setOptions({ styles: hide ? POI_OFF_STYLE : [], clickableIcons: !hide });
-  const aerial = isAerial(map.getMapTypeId());
-  const overlay = hide && aerial && _labelsWanted;   // só no satélite COM rótulos
-  if(aerial) setType(overlay ? 'satellite' : (_labelsWanted ? 'hybrid' : 'satellite'));
-  if(overlay) armLabelOverlay(); else { clearTimeout(_ovTimer); setLabelOverlay(false); }
+  const t = map.getMapTypeId();
+  if(isAerial(t)) map.setMapTypeId(hide ? 'satellite' : 'hybrid');
 }
-// base: satélite (aérea) x mapa (roadmap) — o checkbox 🛰️ e o controle nativo passam por aqui
-function setBase(sat){ _labelsWanted = true; setType(sat ? 'satellite' : 'roadmap'); applyPoiStyle(); }
+// base: aérea (satélite) x mapa (roadmap) — o checkbox 🛰️ e o toggle 🙈 decidem juntos
+function setBase(sat){ map.setMapTypeId(sat ? (poiHidden() ? 'satellite' : 'hybrid') : 'roadmap'); applyPoiStyle(); }
 
 let map, iw, PlaceLib, spherical;
 let transitLayer, trafficLayer, tilted=false;
@@ -624,13 +589,14 @@ async function initMap(){
   iw = new google.maps.InfoWindow({maxWidth:340});
   transitLayer = new google.maps.TransitLayer();
   trafficLayer = new google.maps.TrafficLayer();
+  // o controle nativo do Google (Mapa/Satélite e o botão "Rótulos") muda o tipo por fora: aqui só
+  // refletimos isso nos checkboxes. No satélite, "sem rótulos" é exatamente o nosso "só os meus pins".
   map.addListener('maptypeid_changed', ()=>{
     const t = map.getMapTypeId();
-    if(_selfType === t){ _selfType = null; return; }   // troca nossa: não reinterpretar
-    _selfType = null;
-    if(t==='hybrid') _labelsWanted = true; else if(t==='satellite') _labelsWanted = false;
     const sat = document.getElementById('f_sat'); if(sat) sat.checked = isAerial(t);
-    applyPoiStyle();
+    const poi = document.getElementById('f_poi');
+    if(poi && t==='satellite') poi.checked = true;
+    if(poi && t==='hybrid')    poi.checked = false;
   });
   buildMarkers();
   buildControls();
