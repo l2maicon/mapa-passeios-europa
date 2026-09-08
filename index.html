@@ -562,7 +562,7 @@ const LABELS_ONLY_STYLE = [
   {featureType:'transit.station.airport', elementType:'labels', stylers:[{visibility:'on'}]},
   {featureType:'transit.line', elementType:'labels', stylers:[{visibility:'on'}]},
 ];
-let _labelsWanted = true, _selfType = null, _loOverlay = null;
+let _labelsWanted = true, _selfType = null, _loOverlay = null, _ovTimer = null;
 const isAerial = t => t==='hybrid' || t==='satellite';
 
 function setType(t){ if(map.getMapTypeId()!==t){ _selfType = t; map.setMapTypeId(t); } }
@@ -577,13 +577,23 @@ function setLabelOverlay(on){
   }
 }
 function poiHidden(){ const el=document.getElementById('f_poi'); return !!(el && el.checked); }
+/* O overlay SÓ pode entrar com a imagem aérea já carregada: inserido antes, ele impede o carregamento
+   das tiles de satélite e a tela fica branca (comprovado ao vivo em 07/09 — na init e a cada troca de base).
+   Daí o 'tilesloaded' + um timeout de reserva, para o caso de as tiles já estarem prontas e o evento
+   não disparar de novo. setLabelOverlay(true) é idempotente, então chamar as duas vezes é inofensivo. */
+function armLabelOverlay(){
+  clearTimeout(_ovTimer);
+  const go = ()=>{ if(poiHidden() && isAerial(map.getMapTypeId()) && _labelsWanted) setLabelOverlay(true); };
+  google.maps.event.addListenerOnce(map, 'tilesloaded', go);
+  _ovTimer = setTimeout(go, 2500);
+}
 function applyPoiStyle(){
   const hide = poiHidden();
   map.setOptions({ styles: hide ? POI_OFF_STYLE : [], clickableIcons: !hide });
   const aerial = isAerial(map.getMapTypeId());
   const overlay = hide && aerial && _labelsWanted;   // só no satélite COM rótulos
   if(aerial) setType(overlay ? 'satellite' : (_labelsWanted ? 'hybrid' : 'satellite'));
-  setLabelOverlay(overlay);
+  if(overlay) armLabelOverlay(); else { clearTimeout(_ovTimer); setLabelOverlay(false); }
 }
 // base: satélite (aérea) x mapa (roadmap) — o checkbox 🛰️ e o controle nativo passam por aqui
 function setBase(sat){ _labelsWanted = true; setType(sat ? 'satellite' : 'roadmap'); applyPoiStyle(); }
