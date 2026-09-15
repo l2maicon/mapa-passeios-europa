@@ -978,6 +978,8 @@ function arc(a,b,k){ const n=64, mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0
 // trechos que forçamos A PÉ mesmo à distância de metrô (o roteiro define caminhada) — chave "origem→destino"
 const FORCE_WALK = {
   'Parque del Retiro→Bairro das Grifes - Salamanca':1,   // Madrid: o Retiro é ATALHO até Serrano (a pé, sem metrô)
+  'Louvre→Opéra Garnier':1,              // Paris 02/11: decisão do casal (14/09) — 1,3 km pela Avenue de l'Opéra, ~17 min
+  'Jardin des Tuileries→Opéra Garnier':1, // idem, quando o almoço é nas Tuileries
 };
 // dicas de linha/cor/estações p/ trechos de metrô/trem urbano documentados (chave "nomeOrigem→nomeDestino")
 const METRO_HINTS = {
@@ -998,8 +1000,6 @@ const METRO_HINTS = {
   // ===== Paris =====
   'Champs-Élysées→Marais (Place des Vosges)':'M1 🟡 Franklin D. Roosevelt → Saint-Paul',
   'Marais (Place des Vosges)→Champs-Élysées':'M1 🟡 Saint-Paul → Franklin D. Roosevelt',
-  'Louvre→Opéra Garnier':'M7 🩷 Palais Royal → Opéra',
-  'Opéra Garnier→Louvre':'M7 🩷 Opéra → Palais Royal',
   'Opéra Garnier→Piquenique no Champ de Mars':'M8 🟣 Opéra → École Militaire',
   'Piquenique no Champ de Mars→Opéra Garnier':'M8 🟣 École Militaire → Opéra',
   'Montmartre + Sacré-Cœur→Musée d’Orsay':'M12 🟢 Abbesses → Solférino',
