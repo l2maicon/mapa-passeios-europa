@@ -929,9 +929,11 @@ function openSlot(i){
   const cur={ll:Bp, type:tb, nome:bn};
   let mode=null;
   try{ if(animOn() && advancing && prevAnim && prevAnim.ll && haversine(prevAnim.ll,Bp)>60) mode=pickMode(prevAnim.type,tb,prevAnim.ll,Bp); }catch(e){}
-  if(mode && FORCE_WALK[((prevAnim&&prevAnim.nome)||'')+'→'+bn]) mode='walk';   // trecho a pé por decisão do roteiro
+  const legKey = ((prevAnim&&prevAnim.nome)||'')+'→'+bn;
+  if(mode && FORCE_WALK[legKey]) mode='walk';   // trecho a pé por decisão do roteiro
+  if(mode && FORCE_MODE[legKey]) mode=FORCE_MODE[legKey];   // idem p/ metrô/trem (o padrão do aeroporto é táxi)
   if(!mode){ clearAnim(); baseOpenSlot(mk, tb); prevAnim=cur; return; }
-  const note = (mode==='metro'||mode==='train') ? (METRO_HINTS[((prevAnim&&prevAnim.nome)||'')+'→'+bn]||null) : null;
+  const note = (mode==='metro'||mode==='train') ? (METRO_HINTS[legKey]||null) : null;
   iw.close();
   animate(prevAnim.ll, Bp, mode, ()=>{ baseOpenSlot(mk, tb); }, note);
   prevAnim=cur;
@@ -983,6 +985,12 @@ const FORCE_WALK = {
   'Louvre→Opéra Garnier':1,              // Paris 02/11: decisão do casal (14/09) — 1,6 km / 20 min pela Avenue de l'Opéra
   'Jardin des Tuileries→Opéra Garnier':1, // idem, quando o almoço é nas Tuileries
 };
+/* modo forçado por decisão do roteiro (chave "origem→destino"). Existe porque o pickMode manda TÁXI em
+   qualquer trecho que toque um aeroporto — e nestas pontas o casal vai de metrô, não de táxi. */
+const FORCE_MODE = {
+  "🏨 Hôtel des Ducs d'Anjou — retornar p/ dormir→✈️ Paris — Orly (ORY)":'metro',   // 05/11: M14 direta (decisão 15/09)
+  "✈️ Porto — Sá Carneiro (OPO)→🏨 Vera Cruz Porto Downtown — deixar malas":'metro', // 05/11: linha E direta
+};
 // dicas de linha/cor/estações p/ trechos de metrô/trem urbano documentados (chave "nomeOrigem→nomeDestino")
 const METRO_HINTS = {
   // ===== Madrid =====
@@ -992,6 +1000,8 @@ const METRO_HINTS = {
   'Museo Sorolla→La Latina':'L5 🟢 Rubén Darío → La Latina',
   'Museo Thyssen-Bornemisza→Catedral de la Almudena':'L2 🔴 Banco de España → Ópera',
   'Catedral de la Almudena→Museo Thyssen-Bornemisza':'L2 🔴 Ópera → Banco de España',
+  // ===== Porto =====
+  "✈️ Porto — Sá Carneiro (OPO)→🏨 Vera Cruz Porto Downtown — deixar malas":'Linha E 🟣 Aeroporto → Trindade/Bolhão (~30 min) + 5 min a pé',
   // ===== Barcelona =====
   'La Pedrera / Casa Milà→Tapas + vermut (Carrer Blai)':'L3 🟢 Diagonal → Poble Sec',
   'Tapas + vermut (Carrer Blai)→La Pedrera / Casa Milà':'L3 🟢 Poble Sec → Diagonal',
@@ -1000,6 +1010,8 @@ const METRO_HINTS = {
   'Palau de la Música→MNAC (Palau Nacional)':'L1 🔴 Urquinaona → Espanya',
   'MNAC (Palau Nacional)→Palau de la Música':'L1 🔴 Espanya → Urquinaona',
   // ===== Paris =====
+  "🚆 Paris-Gare-de-Lyon→🏨 Hôtel des Ducs d'Anjou — deixar malas":'M14 💜 Gare de Lyon → Châtelet (1 parada, ~12 min) + 100 m a pé — a única 100% sem degrau',
+  "🏨 Hôtel des Ducs d'Anjou — retornar p/ dormir→✈️ Paris — Orly (ORY)":'M14 💜 Châtelet → Orly (direta, ~25 min) · R$ 0 pelo Navigo · ⛔ não usar o Orlyval',
   'Champs-Élysées→Marais (Place des Vosges)':'M1 🟡 Franklin D. Roosevelt → Saint-Paul',
   'Marais (Place des Vosges)→Champs-Élysées':'M1 🟡 Saint-Paul → Franklin D. Roosevelt',
   'Opéra Garnier→Piquenique no Champ de Mars':'M8 🟣 Opéra → École Militaire',
