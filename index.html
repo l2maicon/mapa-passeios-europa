@@ -990,6 +990,8 @@ const FORCE_WALK = {
 const FORCE_MODE = {
   // 24/10: ÚNICA ponta de aeroporto decidida como TÁXI — tarifa fixa €33 do casal, com 4 malas e jet lag
   "✈️ Madrid — Barajas (MAD)→🏨 Hostal Rías Bajas — deixar malas":'taxi',
+  // 30/10: 1 km da gare ao hotel daria "a pé", mas é com as 4 malas e a St-Charles tem a escadaria — metrô
+  "🚆 Marseille-Saint-Charles→🏨 Hôtel LIFE Marseille VP Vieux-Port — deixar malas":'metro',
 };
 // dicas de linha/cor/estações p/ trechos de metrô/trem urbano documentados (chave "nomeOrigem→nomeDestino")
 const METRO_HINTS = {
@@ -1004,7 +1006,11 @@ const METRO_HINTS = {
   "Noite (Pink Street / Ginjinha)→✈️ Lisboa — Humberto Delgado (LIS)":'🔴 Vermelha (Alameda) — do Cais do Sodré: 🟢 Verde → Alameda + 🔴 Vermelha → Aeroporto (~30 min) · as malas já vão pela LUGGit (T1 às 20:00)',
   // ===== Porto =====
   "✈️ Porto — Sá Carneiro (OPO)→🏨 Vera Cruz Porto Downtown — deixar malas":'Linha E 🟣 Aeroporto → Trindade/Bolhão (~30 min) + 5 min a pé',
+  // ===== Marseille =====
+  "🚆 Marseille-Saint-Charles→🏨 Hôtel LIFE Marseille VP Vieux-Port — deixar malas":'M1 🔵 Saint-Charles → Vieux-Port (2 paradas, ~5 min) + 2 min a pé',
   // ===== Barcelona =====
+  "🚆 Barcelona-Sants→🏨 Hotel Actual Boutique — deixar malas":'L3 🟢 Sants Estació → Diagonal (direta, ~10 min)',
+  "🏨 Hotel Actual Boutique — retornar p/ dormir→🚆 Barcelona-Sants":'L3 🟢 Diagonal → Sants Estació (direta, ~10 min)',
   'La Pedrera / Casa Milà→Tapas + vermut (Carrer Blai)':'L3 🟢 Diagonal → Poble Sec',
   'Tapas + vermut (Carrer Blai)→La Pedrera / Casa Milà':'L3 🟢 Poble Sec → Diagonal',
   'Praia de Barceloneta→Barri Gòtic (Catedral)':'L4 🟡 Barceloneta → Jaume I',
